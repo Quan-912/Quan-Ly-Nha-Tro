@@ -68,9 +68,12 @@ const RoomManagement = () => {
             title: 'Trạng thái',
             dataIndex: 'status',
             render: (status) => {
-                let color = (status === 'AVAILABLE' || status === 'Trống') ? 'green' : 'blue';
-                let text = (status === 'AVAILABLE' || status === 'Trống') ? 'CÒN TRỐNG' : 'ĐÃ THUÊ';
-                return <Tag color={color}>{text}</Tag>;
+                const isAvailable = status === 'AVAILABLE';
+                return (
+                    <Tag color={isAvailable ? 'green' : 'red'}>
+                        {isAvailable ? 'CÒN TRỐNG' : ' ĐÃ THUÊ'}
+                    </Tag>
+                );
             }
         },
         {
