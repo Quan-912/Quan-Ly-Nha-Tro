@@ -28,7 +28,8 @@ const RoomManagement = () => {
             message.success('Đã xóa phòng thành công!');
             fetchRooms();
         } catch (err) {
-            message.error('Lỗi khi xóa: Phòng có thể đang có hợp đồng!');
+            const errorMsg = err.response?.data?.error || 'Lỗi hệ thống khi xóa!';
+            message.error(errorMsg);
         }
     };
 
