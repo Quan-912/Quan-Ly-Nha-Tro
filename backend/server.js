@@ -125,6 +125,28 @@ app.post('/api/contracts', (req, res) => {
     });
 });
 
+// API: Xóa hợp đồng và cập nhật lại trạng thái phòng
+app.delete('/api/contracts/:id', (req, res) => {
+    const contractId = req.params.id; // Đây là giá trị 'key' từ frontend gửi về
+
+    // Lấy room_id để trả phòng về trạng thái trống
+    db.query("SELECT room_id FROM Contracts WHERE contract_id = ?", [contractId], (err, result) => {
+        if (err || result.length === 0) return res.status(404).json("Hợp đồng không tồn tại");
+
+        const roomId = result[0].room_id;
+
+        // Xóa hợp đồng (Dùng đúng contract_id)
+        db.query("DELETE FROM Contracts WHERE contract_id = ?", [contractId], (err2) => {
+            if (err2) return res.status(500).json(err2);
+
+            // Cập nhật lại phòng
+            db.query("UPDATE Rooms SET status = 'AVAILABLE' WHERE room_id = ?", [roomId], (err3) => {
+                return res.json("Xóa thành công!");
+            });
+        });
+    });
+});
+
 // API: Lấy danh sách dịch vụ
 app.get('/api/services', (req, res) => {
     const sql = "SELECT service_id as 'key', service_name, unit_price, unit FROM Services";

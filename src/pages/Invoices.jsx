@@ -71,7 +71,12 @@ const Invoices = () => {
             title: 'Tổng cộng',
             dataIndex: 'total_amount',
             key: 'total_amount',
-            render: (val) => <Text strong style={{ color: 'red' }}>{parseInt(val).toLocaleString()}đ</Text>
+            // Thêm style cho số tiền to và rõ
+            render: (val) => (
+                <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#cf1322' }}>
+            {parseInt(val).toLocaleString()} VNĐ
+        </span>
+            )
         },
         {
             title: 'Trạng thái',
