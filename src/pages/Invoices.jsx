@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Tag, Modal, Form, InputNumber, Select, message, Space, Typography, Divider } from 'antd';
+import {Table, Button, Tag, Modal, Form, InputNumber, Select, message,
+    Space, Typography, Divider, Popconfirm} from 'antd';
+
 import { CalculatorOutlined, PrinterOutlined } from '@ant-design/icons';
 import axios from 'axios'; // Đảm bảo đã chạy npm install axios
 
@@ -63,6 +65,33 @@ const Invoices = () => {
             message.error('Lỗi khi tạo hóa đơn!');
         }
     };
+    // Hàm gọi API xác nhận đã thu tiền
+    const handlePayment = async (invoiceId) => {
+        try {
+            await axios.put(`http://localhost:5000/api/invoices/${invoiceId}/pay`);
+            message.success('Đã xác nhận thu tiền thành công!');
+            fetchData(); // Gọi lại hàm này để bảng cập nhật màu sắc ngay lập tức
+        } catch (error) {
+            message.error('Lỗi khi cập nhật thanh toán!');
+        }
+    };
+
+    const handleRoomChange = async (roomId) => {
+        try {
+            const res = await axios.get(`http://localhost:5000/api/last-index/${roomId}`);
+            const lastData = res.data;
+
+            // Tạo object chứa số cũ để cập nhật form
+            const oldIndices = {};
+            lastData.forEach(item => {
+                oldIndices[`old_${item.service_id}`] = item.new_index;
+            });
+
+            form.setFieldsValue(oldIndices);
+        } catch (err) {
+            console.error("Không lấy được số cũ:", err);
+        }
+    };
 
     const columns = [
         { title: 'Phòng', dataIndex: 'room_number', key: 'room_number' },
@@ -91,8 +120,21 @@ const Invoices = () => {
         {
             title: 'Hành động',
             key: 'action',
-            render: () => (
+            render: (_, record) => (
                 <Space>
+                    {/* Chỉ hiện nút Thu tiền nếu trạng thái là UNPAID */}
+                    {record.status === 'UNPAID' && (
+                        <Popconfirm
+                            title="Xác nhận khách đã đóng tiền cho tháng này?"
+                            onConfirm={() => handlePayment(record.key)}
+                            okText="Xác nhận"
+                            cancelText="Hủy"
+                        >
+                            <Button type="primary" style={{ backgroundColor: '#52c41a' }}>
+                                Thu tiền
+                            </Button>
+                        </Popconfirm>
+                    )}
                     <Button icon={<PrinterOutlined />}>In</Button>
                 </Space>
             )
@@ -114,8 +156,13 @@ const Invoices = () => {
                 <Form form={form} layout="vertical" onFinish={handleCreateInvoice}>
                     <Space size="large" style={{ display: 'flex', marginBottom: 20 }}>
                         <Form.Item name="room_id" label="Chọn phòng" rules={[{required: true}]} style={{width: 200}}>
-                            <Select placeholder="Chọn phòng">
-                                {rooms.map(r => <Select.Option key={r.key} value={r.key}>{r.room_number}</Select.Option>)}
+                            <Select
+                                placeholder="Chọn phòng"
+                            onChange={handleRoomChange} >
+                                {rooms.map(r =>
+                                    <Select.Option key={r.room_id} value={r.room_id}>
+                                        {r.room_number}
+                                    </Select.Option>)}
                             </Select>
                         </Form.Item>
                         <Form.Item name="month" label="Tháng thanh toán" initialValue="05/2026" style={{width: 200}}>

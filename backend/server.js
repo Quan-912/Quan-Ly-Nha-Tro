@@ -204,6 +204,28 @@ app.post('/api/invoices', (req, res) => {
     });
 });
 
+// API: Lấy danh sách hóa đơn để hiện lên bảng
+app.get('/api/invoices', (req, res) => {
+    const sql = `
+        SELECT i.invoice_id as 'key', r.room_number, i.billing_month, i.total_amount, i.status 
+        FROM Invoices i
+        JOIN Rooms r ON i.room_id = r.room_id
+        ORDER BY i.created_at DESC
+    `;
+    db.query(sql, (err, data) => {
+        if (err) return res.status(500).json(err);
+        return res.json(data);
+    });
+});
+
+// API: Xác nhận thanh toán (Dùng cho nút bấm sau này)
+app.put('/api/invoices/:id/pay', (req, res) => {
+    const sql = "UPDATE Invoices SET status = 'PAID' WHERE invoice_id = ?";
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        return res.json("Đã thanh toán hóa đơn!");
+    });
+});
 
 // Chạy server tại cổng 5000
 app.listen(5000, () => {
