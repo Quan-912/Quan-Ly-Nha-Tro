@@ -23,9 +23,43 @@ db.connect((err) => {
     console.log('Đã kết nối MySQL thành công!');
 });
 
+// ==========================================
+// THÊM MỚI: API Đăng nhập hệ thống
+// ==========================================
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+
+    const sql = `
+        SELECT u.user_id, u.username, u.role, u.full_name, t.tenant_id 
+        FROM Users u
+        LEFT JOIN Tenants t ON u.user_id = t.user_id
+        WHERE u.username = ? AND u.password_hash = ?
+    `;
+
+    db.query(sql, [username, password], (err, result) => {
+        if (err) return res.status(500).json(err);
+
+        if (result.length > 0) {
+            const user = result[0];
+            return res.json({
+                message: "Đăng nhập thành công!",
+                user: {
+                    id: user.user_id,
+                    username: user.username,
+                    role: user.role,
+                    full_name: user.full_name,
+                    tenant_id: user.tenant_id
+                }
+            });
+        } else {
+            return res.status(401).json({ error: "Sai tài khoản hoặc mật khẩu!" });
+        }
+    });
+});
+
 // API: Lấy danh sách phòng
 app.get('/api/rooms', (req, res) => {
-    const sql = "SELECT room_id, room_number, room_type, base_price, status FROM Rooms";
+    const sql = "SELECT room_id as 'key', room_number, room_type, base_price, status FROM Rooms";
     db.query(sql, (err, data) => {
         if (err) return res.status(500).json(err);
         return res.json(data);
@@ -64,9 +98,9 @@ app.delete('/api/rooms/:id', (req, res) => {
 // API: Lấy danh sách khách thuê
 app.get('/api/tenants', (req, res) => {
     const sql = `
-        SELECT t.tenant_id as 'key', u.full_name, u.username, t.phone, t.cccd, t.hometown 
-        FROM Tenants t 
-        JOIN Users u ON t.user_id = u.user_id
+        SELECT t.tenant_id as 'key', u.full_name, u.username, t.phone, t.cccd, t.hometown
+        FROM Tenants t
+                 JOIN Users u ON t.user_id = u.user_id
     `;
     db.query(sql, (err, data) => {
         if (err) return res.status(500).json(err);
@@ -96,12 +130,12 @@ app.post('/api/tenants', async (req, res) => {
 // API: Lấy danh sách hợp đồng (Join với Rooms và Tenants để lấy tên)
 app.get('/api/contracts', (req, res) => {
     const sql = `
-        SELECT c.contract_id as 'key', r.room_number, u.full_name, 
+        SELECT c.contract_id as 'key', r.room_number, u.full_name,
                c.start_date, c.end_date, c.deposit_amount, c.status
         FROM Contracts c
-        JOIN Rooms r ON c.room_id = r.room_id
-        JOIN Tenants t ON c.tenant_id = t.tenant_id
-        JOIN Users u ON t.user_id = u.user_id
+                 JOIN Rooms r ON c.room_id = r.room_id
+                 JOIN Tenants t ON c.tenant_id = t.tenant_id
+                 JOIN Users u ON t.user_id = u.user_id
     `;
     db.query(sql, (err, data) => {
         if (err) return res.status(500).json(err);
@@ -169,10 +203,10 @@ app.put('/api/services/:id', (req, res) => {
 // API: Lấy thông tin số cũ (Chỉ số điện/nước mới nhất của tháng trước)
 app.get('/api/last-index/:roomId', (req, res) => {
     const sql = `
-        SELECT service_id, new_index 
+        SELECT service_id, new_index
         FROM Invoice_Details id
-        JOIN Invoices i ON id.invoice_id = i.invoice_id
-        WHERE i.room_id = ? 
+                 JOIN Invoices i ON id.invoice_id = i.invoice_id
+        WHERE i.room_id = ?
         ORDER BY i.created_at DESC LIMIT 2`;
     db.query(sql, [req.params.roomId], (err, data) => {
         if (err) return res.status(500).json(err);
@@ -207,9 +241,9 @@ app.post('/api/invoices', (req, res) => {
 // API: Lấy danh sách hóa đơn để hiện lên bảng
 app.get('/api/invoices', (req, res) => {
     const sql = `
-        SELECT i.invoice_id as 'key', r.room_number, i.billing_month, i.total_amount, i.status 
+        SELECT i.invoice_id as 'key', r.room_number, i.billing_month, i.total_amount, i.status
         FROM Invoices i
-        JOIN Rooms r ON i.room_id = r.room_id
+                 JOIN Rooms r ON i.room_id = r.room_id
         ORDER BY i.created_at DESC
     `;
     db.query(sql, (err, data) => {

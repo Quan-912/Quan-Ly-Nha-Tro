@@ -1,17 +1,37 @@
 import React from 'react';
-import { Layout, Menu, Typography } from 'antd';
-import { Link, Outlet } from 'react-router-dom';
+import { Layout, Menu, Typography, Modal } from 'antd'; // Thêm Modal để làm hộp thoại xác nhận
+import { Link, Outlet, useNavigate } from 'react-router-dom'; // Thêm useNavigate
 import {
     DashboardOutlined,
     HomeOutlined,
     UserOutlined,
-    FileTextOutlined, FileDoneOutlined, SettingOutlined
+    FileTextOutlined,
+    FileDoneOutlined,
+    SettingOutlined,
+    LogoutOutlined // Thêm icon Đăng xuất
 } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
 
 const AdminLayout = () => {
+    const navigate = useNavigate(); // Dùng để chuyển hướng sau khi đăng xuất
+
+    // Hàm xử lý khi người dùng bấm Đăng xuất
+    const handleLogout = () => {
+        Modal.confirm({
+            title: 'Xác nhận đăng xuất',
+            content: 'Bạn có chắc chắn muốn thoát khỏi hệ thống không?',
+            okText: 'Đăng xuất',
+            cancelText: 'Hủy',
+            okButtonProps: { danger: true }, // Làm nút Đăng xuất màu đỏ cho đẹp
+            onOk() {
+                localStorage.removeItem('user'); // 1. Xóa thông tin user trong máy
+                navigate('/login'); // 2. Đá về trang đăng nhập
+            },
+        });
+    };
+
     const menuItems = [
         { key: '1', icon: <DashboardOutlined />, label: <Link to="/">Tổng quan</Link> },
         { key: '2', icon: <HomeOutlined />, label: <Link to="/rooms">Quản lý Phòng</Link> },
@@ -19,11 +39,17 @@ const AdminLayout = () => {
         { key: '4', icon: <FileDoneOutlined />, label: <Link to="/contracts">Hợp đồng</Link> },
         { key: '5', icon: <FileTextOutlined />, label: <Link to="/invoices">Hóa đơn</Link> },
         { key: '6', icon: <SettingOutlined />, label: <Link to="/services">Dịch vụ & Giá</Link> },
+        // Thêm mục Đăng xuất vào cuối danh sách menu
+        {
+            key: '7',
+            icon: <LogoutOutlined style={{ color: '#ff4d4f' }} />,
+            label: <span style={{ color: '#ff4d4f' }}>Đăng xuất</span>,
+            onClick: handleLogout // Gọi hàm đăng xuất khi bấm vào
+        },
     ];
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            {/* 1. SỬA SIDER: Thêm style để cố định bên trái */}
             <Sider
                 theme="dark"
                 style={{
@@ -42,7 +68,6 @@ const AdminLayout = () => {
             </Sider>
 
             <Layout>
-                {/* 2. SỬA HEADER: Thêm zIndex và sticky để nó luôn nằm trên cùng khi cuộn nội dung */}
                 <Header style={{
                     padding: 0,
                     background: '#fff',

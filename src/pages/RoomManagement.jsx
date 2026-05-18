@@ -39,7 +39,7 @@ const RoomManagement = () => {
             try {
                 if (editingRoom) {
                     // Cập nhật dùng room_id
-                    await axios.put(`http://localhost:5000/api/rooms/${editingRoom.room_id}`, values);
+                    await axios.put(`http://localhost:5000/api/rooms/${editingRoom.key || editingRoom.room_id}`, values);
                     message.success('Cập nhật thành công!');
                 } else {
                     // Thêm mới
@@ -93,7 +93,7 @@ const RoomManagement = () => {
                     />
                     <Popconfirm
                         title="Xóa phòng này?"
-                        onConfirm={() => handleDelete(record.room_id)} // Sử dụng room_id
+                        onConfirm={() => handleDelete(record.key || record.room_id)} // Sử dụng room_id
                         okText="Xóa"
                         cancelText="Hủy"
                     >
@@ -120,7 +120,7 @@ const RoomManagement = () => {
             <Table
                 dataSource={dataSource}
                 columns={columns}
-                rowKey="room_id" // Cực kỳ quan trọng để hiện danh sách
+                rowKey={(record) => record.key || record.room_id}
             />
 
             <Modal
@@ -143,7 +143,7 @@ const RoomManagement = () => {
                     </Form.Item>
                     <Form.Item name="status" label="Trạng thái" rules={[{ required: true }]}>
                         <Select>
-                            <Select.Option value="AVAILABLE">Trống</Select.Option>
+                            <Select.Option value="AVAILABLE">Còn trống</Select.Option>
                             <Select.Option value="OCCUPIED">Đã thuê</Select.Option>
                         </Select>
                     </Form.Item>
