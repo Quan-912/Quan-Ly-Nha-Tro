@@ -13,16 +13,22 @@ const Contracts = () => {
 
     // Lấy dữ liệu tổng hợp
     const fetchData = async () => {
-        const resCon = await axios.get('http://localhost:5000/api/contracts');
-        const resRooms = await axios.get('http://localhost:5000/api/rooms');
-        const resTenants = await axios.get('http://localhost:5000/api/tenants');
+        try {
+            const resCon = await axios.get('http://localhost:5000/api/contracts');
+            const resRooms = await axios.get('http://localhost:5000/api/rooms');
+            const resTenants = await axios.get('http://localhost:5000/api/tenants');
 
-        setContracts(resCon.data);
-        // Chỉ hiện những phòng còn trống (AVAILABLE) để làm hợp đồng
-        setRooms(resRooms.data.filter(r => r.status === 'AVAILABLE'));
-        setTenants(resTenants.data);
-    };
+            setContracts(resCon.data);
 
+            // Chấp nhận cả 2 loại status để không bị sót phòng
+            setRooms(resRooms.data.filter(r =>
+                r.status === 'AVAILABLE' || r.status === 'CÒN TRỐNG'
+            ));
+            setTenants(resTenants.data);
+        } catch (error) {
+            message.error("Lỗi khi tải dữ liệu!");
+        }
+    }
     useEffect(() => { fetchData(); }, []);
 
     const handleCreate = (values) => {
@@ -114,17 +120,22 @@ const Contracts = () => {
                 <Form form={form} layout="vertical" onFinish={handleCreate}>
 
                     <Form.Item name="room_id" label="Chọn phòng trống" rules={[{required: true}]}>
-                        <Select>
-                            {rooms.map(
-                                r => <Select.Option key={r.room_id} value={r.room_id}>
+                        <Select placeholder="Chọn phòng">
+                            {rooms.map(r => (
+                                <Select.Option key={r.room_id} value={r.room_id}>
                                     {r.room_number}
-                                </Select.Option>)}
+                                </Select.Option>
+                            ))}
                         </Select>
                     </Form.Item>
 
                     <Form.Item name="tenant_id" label="Chọn khách thuê" rules={[{required: true}]}>
-                        <Select>
-                            {tenants.map(t => <Select.Option key={t.key} value={t.key}>{t.full_name}</Select.Option>)}
+                        <Select placeholder="Chọn khách thuê">
+                            {tenants.map(t => (
+                                <Select.Option key={t.tenant_id} value={t.tenant_id}>
+                                    {t.full_name}
+                                </Select.Option>
+                            ))}
                         </Select>
                     </Form.Item>
 

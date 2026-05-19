@@ -59,7 +59,8 @@ app.post('/api/login', (req, res) => {
 
 // API: Lấy danh sách phòng
 app.get('/api/rooms', (req, res) => {
-    const sql = "SELECT room_id as 'key', room_number, room_type, base_price, status FROM Rooms";
+    // Trả về cả room_id để dùng cho Logic và key để dùng cho Table của AntD
+    const sql = "SELECT room_id, room_id as 'key', room_number, room_type, base_price, status FROM Rooms";
     db.query(sql, (err, data) => {
         if (err) return res.status(500).json(err);
         return res.json(data);
@@ -98,7 +99,7 @@ app.delete('/api/rooms/:id', (req, res) => {
 // API: Lấy danh sách khách thuê
 app.get('/api/tenants', (req, res) => {
     const sql = `
-        SELECT t.tenant_id as 'key', u.full_name, u.username, t.phone, t.cccd, t.hometown
+        SELECT t.tenant_id, t.tenant_id as 'key', u.full_name, u.username, t.phone, t.cccd, t.hometown
         FROM Tenants t
                  JOIN Users u ON t.user_id = u.user_id
     `;
@@ -258,6 +259,38 @@ app.put('/api/invoices/:id/pay', (req, res) => {
     db.query(sql, [req.params.id], (err, result) => {
         if (err) return res.status(500).json(err);
         return res.json("Đã thanh toán hóa đơn!");
+    });
+});
+
+//TENANT
+// API: Lấy thông tin phòng dành cho Khách thuê (Sửa lại cho đúng tên cột SQL)
+app.get('/api/tenant/room-info/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    const sql = `
+        SELECT 
+            r.room_number, 
+            r.room_type, 
+            r.base_price, 
+            c.start_date, 
+            c.deposit_amount,
+            c.status as contract_status
+        FROM Users u 
+        JOIN Tenants t ON u.user_id = t.user_id  -- Sửa u.id thành u.user_id
+        JOIN Contracts c ON t.tenant_id = c.tenant_id
+        JOIN Rooms r ON c.room_id = r.room_id
+        WHERE u.user_id = ? AND c.status = 'ACTIVE' -- Sửa u.id thành u.user_id
+        LIMIT 1`;
+
+    db.query(sql, [userId], (err, result) => {
+        if (err) {
+            console.error("Lỗi SQL:", err);
+            return res.status(500).json({ error: "Lỗi truy vấn cơ sở dữ liệu" });
+        }
+        if (result.length === 0) {
+            return res.status(404).json({ message: "Bạn hiện chưa có hợp đồng thuê phòng nào đang hoạt động." });
+        }
+        res.json(result[0]);
     });
 });
 

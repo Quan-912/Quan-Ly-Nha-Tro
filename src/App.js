@@ -9,27 +9,20 @@ import Tenants from './pages/Tenants';
 import Invoices from './pages/Invoices';
 import Contracts from "./pages/Contracts";
 import Services from './pages/Services';
-import Login from './pages/Login'; // Import trang Login vừa tạo
+import Login from './pages/Login';
+import TenantLayout from './components/TenantLayout';
+import TenantDashboard from './pages/TenantDashboard';
 
-// ==========================================
-// THÊM MỚI: Kỹ thuật Bảo vệ Route (Phân quyền)
-// ==========================================
 const ProtectedRoute = ({ children, allowedRole }) => {
-    // Lấy thông tin user từ LocalStorage (được lưu lúc đăng nhập)
     const userString = localStorage.getItem('user');
     const user = userString ? JSON.parse(userString) : null;
 
-    // 1. Nếu chưa đăng nhập -> Đuổi về trang Login
     if (!user) {
         return <Navigate to="/login" replace />;
     }
-
-    // 2. Nếu đã đăng nhập nhưng sai quyền (VD: Khách thuê đòi vào trang Admin) -> Đuổi về Login
     if (user.role !== allowedRole) {
         return <Navigate to="/login" replace />;
     }
-
-    // 3. Hợp lệ thì cho phép vào xem
     return children;
 };
 
@@ -37,12 +30,15 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                {/* 1. Tuyến đường công khai: Bất kỳ ai cũng vào được */}
+                {/* 1. VỪA KHỞI CHẠY: Tự động chuyển hướng thẳng vào trang login */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
+
+                {/* Trang công khai */}
                 <Route path="/login" element={<Login />} />
 
-                {/* 2. Phân hệ ADMIN: Được bảo vệ bởi ProtectedRoute */}
+                {/* 2. Phân hệ ADMIN: Chuyển gốc thành /admin */}
                 <Route
-                    path="/"
+                    path="/admin"
                     element={
                         <ProtectedRoute allowedRole="ADMIN">
                             <AdminLayout />
@@ -57,29 +53,19 @@ function App() {
                     <Route path="services" element={<Services />} />
                 </Route>
 
-                {/* 3. Phân hệ KHÁCH THUÊ: Chuẩn bị sẵn để làm tiếp */}
+                {/* 3. Phân hệ KHÁCH THUÊ */}
                 <Route
                     path="/tenant"
                     element={
                         <ProtectedRoute allowedRole="TENANT">
-                            {/* Tạm thời để một dòng chữ, sau này sẽ thay bằng TenantLayout */}
-                            <div style={{ padding: 50, textAlign: 'center', fontSize: 24 }}>
-                                <h1>Chào mừng Khách Thuê</h1>
-                                <p>Giao diện của bạn đang được xây dựng...</p>
-                                <button
-                                    onClick={() => {
-                                        localStorage.removeItem('user');
-                                        window.location.href = '/login';
-                                    }}
-                                >
-                                    Đăng xuất
-                                </button>
-                            </div>
+                            <TenantLayout />
                         </ProtectedRoute>
                     }
-                />
+                >
+                    <Route index element={<TenantDashboard />} />
+                </Route>
 
-                {/* 4. Tuyến đường dự phòng: Gõ link bậy bạ sẽ về trang Login */}
+                {/* 4. Tuyến đường dự phòng */}
                 <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
         </BrowserRouter>

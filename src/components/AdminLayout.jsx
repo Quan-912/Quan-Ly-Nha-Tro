@@ -33,18 +33,17 @@ const AdminLayout = () => {
     };
 
     const menuItems = [
-        { key: '1', icon: <DashboardOutlined />, label: <Link to="/">Tổng quan</Link> },
-        { key: '2', icon: <HomeOutlined />, label: <Link to="/rooms">Quản lý Phòng</Link> },
-        { key: '3', icon: <UserOutlined />, label: <Link to="/tenants">Khách thuê</Link> },
-        { key: '4', icon: <FileDoneOutlined />, label: <Link to="/contracts">Hợp đồng</Link> },
-        { key: '5', icon: <FileTextOutlined />, label: <Link to="/invoices">Hóa đơn</Link> },
-        { key: '6', icon: <SettingOutlined />, label: <Link to="/services">Dịch vụ & Giá</Link> },
-        // Thêm mục Đăng xuất vào cuối danh sách menu
+        { key: '1', icon: <DashboardOutlined />, label: <Link to="/admin">Tổng quan</Link> },
+        { key: '2', icon: <HomeOutlined />, label: <Link to="/admin/rooms">Quản lý Phòng</Link> },
+        { key: '3', icon: <UserOutlined />, label: <Link to="/admin/tenants">Khách thuê</Link> },
+        { key: '4', icon: <FileDoneOutlined />, label: <Link to="/admin/contracts">Hợp đồng</Link> },
+        { key: '5', icon: <FileTextOutlined />, label: <Link to="/admin/invoices">Hóa đơn</Link> },
+        { key: '6', icon: <SettingOutlined />, label: <Link to="/admin/services">Dịch vụ & Giá</Link> },
         {
             key: '7',
             icon: <LogoutOutlined style={{ color: '#ff4d4f' }} />,
             label: <span style={{ color: '#ff4d4f' }}>Đăng xuất</span>,
-            onClick: handleLogout // Gọi hàm đăng xuất khi bấm vào
+            onClick: handleLogout
         },
     ];
 

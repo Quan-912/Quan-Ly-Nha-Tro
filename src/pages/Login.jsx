@@ -21,7 +21,7 @@ const Login = () => {
 
             // BƯỚC ĐIỀU HƯỚNG QUAN TRỌNG: Kiểm tra quyền (Role)
             if (res.data.user.role === 'ADMIN') {
-                navigate('/'); // Vào trang quản lý của Admin
+                navigate('/admin'); // Vào trang quản lý của Admin
             } else if (res.data.user.role === 'TENANT') {
                 navigate('/tenant'); // Vào trang của Khách thuê
             }

@@ -35,6 +35,7 @@ const Invoices = () => {
 
     // 2. Hàm xử lý lưu hóa đơn vào Database
     const handleCreateInvoice = async (values) => {
+        console.log("Dữ liệu Form nhận được:", values);
         try {
             // Chuẩn bị mảng chi tiết dịch vụ cho bảng Invoice_Details
             const invoiceDetails = services.map(s => {
@@ -155,14 +156,22 @@ const Invoices = () => {
             <Modal title="Tính hóa đơn tháng" open={isModalOpen} onOk={() => form.submit()} onCancel={() => setIsModalOpen(false)} width={600}>
                 <Form form={form} layout="vertical" onFinish={handleCreateInvoice}>
                     <Space size="large" style={{ display: 'flex', marginBottom: 20 }}>
-                        <Form.Item name="room_id" label="Chọn phòng" rules={[{required: true}]} style={{width: 200}}>
+                        <Form.Item
+                            name="room_id"
+                            label="Chọn phòng"
+                            rules={[{required: true, message: 'Vui lòng chọn phòng!'}]}
+                            style={{width: 200}}
+                        >
                             <Select
                                 placeholder="Chọn phòng"
-                            onChange={handleRoomChange} >
-                                {rooms.map(r =>
-                                    <Select.Option key={r.room_id} value={r.room_id}>
+                                onChange={handleRoomChange} // Gọi hàm lấy số cũ
+
+                            >
+                                {rooms.map(r => (
+                                    <Select.Option key={r.key} value={r.key}>
                                         {r.room_number}
-                                    </Select.Option>)}
+                                    </Select.Option>
+                                ))}
                             </Select>
                         </Form.Item>
                         <Form.Item name="month" label="Tháng thanh toán" initialValue="05/2026" style={{width: 200}}>
