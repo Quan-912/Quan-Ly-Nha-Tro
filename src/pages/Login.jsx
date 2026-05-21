@@ -53,16 +53,16 @@ const Login = () => {
                 <Form name="login_form" layout="vertical" onFinish={onFinish}>
                     <Form.Item
                         name="username"
-                        rules={[{ required: true, message: 'Vui lòng nhập tên tài khoản!' }]}
+                        rules={[{required: true, message: 'Vui lòng nhập tên tài khoản!'}]}
                     >
-                        <Input prefix={<UserOutlined />} placeholder="Tên tài khoản" size="large" />
+                        <Input prefix={<UserOutlined/>} placeholder="Tên tài khoản" size="large"/>
                     </Form.Item>
 
                     <Form.Item
                         name="password"
-                        rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }]}
+                        rules={[{required: true, message: 'Vui lòng nhập mật khẩu!'}]}
                     >
-                        <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" size="large" />
+                        <Input.Password prefix={<LockOutlined/>} placeholder="Mật khẩu" size="large"/>
                     </Form.Item>
 
                     <Form.Item>
@@ -70,6 +70,10 @@ const Login = () => {
                             Đăng nhập
                         </Button>
                     </Form.Item>
+
+                    <div style={{textAlign: 'center', marginTop: 12}}>
+                        Chưa có tài khoản? <a onClick={() => navigate('/register')}>Đăng ký ngay</a>
+                    </div>
                 </Form>
             </Card>
         </div>

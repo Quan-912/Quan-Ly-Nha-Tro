@@ -10,6 +10,7 @@ import Invoices from './pages/Invoices';
 import Contracts from "./pages/Contracts";
 import Services from './pages/Services';
 import Login from './pages/Login';
+import Register from "./pages/Register";
 import TenantLayout from './components/TenantLayout';
 import TenantDashboard from './pages/TenantDashboard';
 
@@ -36,6 +37,8 @@ function App() {
                 {/* Trang công khai */}
                 <Route path="/login" element={<Login />} />
 
+                <Route path="/register" element={<Register />} />
+
                 {/* 2. Phân hệ ADMIN: Chuyển gốc thành /admin */}
                 <Route
                     path="/admin"
@@ -45,12 +48,14 @@ function App() {
                         </ProtectedRoute>
                     }
                 >
+
                     <Route index element={<Dashboard />} />
                     <Route path="rooms" element={<RoomManagement />} />
                     <Route path="tenants" element={<Tenants />} />
                     <Route path="invoices" element={<Invoices />} />
                     <Route path="contracts" element={<Contracts />} />
                     <Route path="services" element={<Services />} />
+
                 </Route>
 
                 {/* 3. Phân hệ KHÁCH THUÊ */}
