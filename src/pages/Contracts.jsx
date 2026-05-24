@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {Table, Button, Modal, Form, Select, DatePicker, InputNumber, message, Tag, Typography, Popconfirm, Space} from 'antd';
+import {Table, Button, Modal, Form, Select, DatePicker, InputNumber, message, Tag, Typography, Popconfirm, Badge, Row, Col} from 'antd';
 import { FileDoneOutlined, DeleteOutlined } from '@ant-design/icons';
-
 import axios from 'axios';
-const { Text } = Typography;
+
+const { Text, Title } = Typography;
+
 const Contracts = () => {
     const [contracts, setContracts] = useState([]);
     const [rooms, setRooms] = useState([]);
@@ -11,7 +12,6 @@ const Contracts = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
 
-    // Lấy dữ liệu tổng hợp
     const fetchData = async () => {
         try {
             const resCon = await axios.get('http://localhost:5000/api/contracts');
@@ -19,8 +19,6 @@ const Contracts = () => {
             const resTenants = await axios.get('http://localhost:5000/api/tenants');
 
             setContracts(resCon.data);
-
-            // Chấp nhận cả 2 loại status để không bị sót phòng
             setRooms(resRooms.data.filter(r =>
                 r.status === 'AVAILABLE' || r.status === 'CÒN TRỐNG'
             ));
@@ -39,20 +37,17 @@ const Contracts = () => {
         };
         axios.post('http://localhost:5000/api/contracts', data)
             .then(() => {
-                message.success("Hợp đồng đã được ký kết!");
+                message.success("Đã lập hợp đồng!");
                 setIsModalOpen(false);
+                form.resetFields();
                 fetchData();
             });
     };
 
     const handleDelete = async (contractKey) => {
-        if (!contractKey) {
-            message.error("Không tìm thấy ID hợp đồng!");
-            return;
-        }
         try {
             await axios.delete(`http://localhost:5000/api/contracts/${contractKey}`);
-            message.success("Đã xóa hợp đồng thành công!");
+            message.success("Đã xóa!");
             fetchData();
         } catch (error) {
             message.error("Lỗi khi xóa!");
@@ -60,97 +55,148 @@ const Contracts = () => {
     };
 
     const columns = [
-
         {
             title: 'Phòng',
             dataIndex: 'room_number',
             key: 'room_number',
-            render: (text) => <Tag color="volcano">{text}</Tag> // Làm nổi bật số phòng
+            width: 100,
+            render: (text) => (
+                <Tag color="blue" style={{ fontSize: '14px', fontWeight: 'bold', padding: '2px 8px' }}>
+                    {text}
+                </Tag>
+            )
         },
-
-        { title: 'Khách thuê', dataIndex: 'full_name', key: 'full_name' },
-
-        { title: 'Ngày bắt đầu', dataIndex: 'start_date', key: 'start_date' },
-
         {
-            title: 'Ngày hết hạn',
-            dataIndex: 'end_date',
-            key: 'end_date',
-            render: (date) => date ? date : <Tag>Dài hạn</Tag>
+            title: 'Khách thuê',
+            dataIndex: 'full_name',
+            key: 'full_name',
+            render: (text) => <Text style={{ fontSize: '15px', fontWeight: '600' }}>{text}</Text>
         },
-
+        {
+            title: 'Thời hạn',
+            key: 'duration',
+            render: (_, record) => (
+                <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
+                    <div><Text type="secondary">Từ:</Text> <Text strong>{record.start_date}</Text></div>
+                    <div><Text type="secondary">Đến:</Text> <Text strong>{record.end_date || 'Dài hạn'}</Text></div>
+                </div>
+            )
+        },
         {
             title: 'Tiền cọc',
             dataIndex: 'deposit_amount',
-            render: val => <Text type="success">{val?.toLocaleString()}đ</Text>
+            align: 'right',
+            render: val => (
+                <Text style={{ fontSize: '15px', color: '#52c41a', fontWeight: 'bold' }}>
+                    {val?.toLocaleString()}đ
+                </Text>
+            )
         },
-
         {
             title: 'Trạng thái',
             dataIndex: 'status',
-            render: s => <Tag color={s === 'ACTIVE' ? 'green' : 'red'}>{s}</Tag>
+            align: 'center',
+            width: 120,
+            render: s => (
+                <Badge
+                    status={s === 'ACTIVE' ? 'success' : 'error'}
+                    text={<Text style={{ fontSize: '14px' }}>{s === 'ACTIVE' ? 'Hiệu lực' : 'Hết hạn'}</Text>}
+                />
+            )
         },
-
         {
-            title: 'Hành động',
+            title: 'Thao tác',
             key: 'action',
+            align: 'center',
+            width: 80,
             render: (_, record) => (
-                <Popconfirm
-                    title="Bạn có chắc muốn xóa?"
-                    onConfirm={() => handleDelete(record.key)} // Đảm bảo dùng record.key
-                    okText="Xóa"
-                    cancelText="Hủy"
-                >
-                    <Button type="text" danger icon={<DeleteOutlined />} />
+                <Popconfirm title="Xóa hợp đồng?" onConfirm={() => handleDelete(record.key || record.contract_id)}>
+                    <Button type="text" size="middle" danger icon={<DeleteOutlined style={{ fontSize: '18px' }} />} />
                 </Popconfirm>
             )
         }
     ];
 
     return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h2>Quản lý Hợp đồng thuê phòng</h2>
-                <Button type="primary" icon={<FileDoneOutlined />} onClick={() => setIsModalOpen(true)}>Lập hợp đồng mới</Button>
+        <div style={{ background: '#fff', padding: '20px', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Title level={4} style={{ margin: 0, fontSize: '20px' }}>QUẢN LÝ HỢP ĐỒNG</Title>
+                <Button
+                    type="primary"
+                    size="middle"
+                    icon={<FileDoneOutlined />}
+                    onClick={() => setIsModalOpen(true)}
+                    style={{ fontWeight: '500' }}
+                >
+                    Lập hợp đồng mới
+                </Button>
             </div>
-            <Table dataSource={contracts} columns={columns} />
 
-            <Modal title="Lập hợp đồng mới" open={isModalOpen} onOk={() => form.submit()} onCancel={() => setIsModalOpen(false)}>
+            <Table
+                dataSource={contracts}
+                columns={columns}
+                size="middle" // Chuyển từ small sang middle để dòng thoáng hơn, chữ to hơn tự nhiên
+                pagination={{ pageSize: 8 }}
+                bordered
+            />
 
-                <Form form={form} layout="vertical" onFinish={handleCreate}>
+            <Modal
+                title={<span style={{ fontSize: '18px' }}>Lập hợp đồng mới</span>}
+                open={isModalOpen}
+                onOk={() => form.submit()}
+                onCancel={() => setIsModalOpen(false)}
+                width={550}
+                okText="Ký kết"
+                cancelText="Hủy"
+            >
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleCreate}
+                    size="large" // Tăng size các ô Input để thầy dễ nhìn
+                >
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="room_id" label={<Text strong>Phòng trống</Text>} rules={[{required: true}]}>
+                                <Select placeholder="Chọn phòng">
+                                    {rooms.map(r => (
+                                        <Select.Option key={r.room_id} value={r.room_id}>{r.room_number}</Select.Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="tenant_id" label={<Text strong>Khách thuê</Text>} rules={[{required: true}]}>
+                                <Select placeholder="Chọn khách">
+                                    {tenants.map(t => (
+                                        <Select.Option key={t.tenant_id} value={t.tenant_id}>{t.full_name}</Select.Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                    <Form.Item name="room_id" label="Chọn phòng trống" rules={[{required: true}]}>
-                        <Select placeholder="Chọn phòng">
-                            {rooms.map(r => (
-                                <Select.Option key={r.room_id} value={r.room_id}>
-                                    {r.room_number}
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="start_date" label={<Text strong>Ngày vào ở</Text>} rules={[{required: true}]}>
+                                <DatePicker style={{width:'100%'}} placeholder="Bắt đầu"/>
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="end_date" label={<Text strong>Ngày hết hạn</Text>}>
+                                <DatePicker style={{width:'100%'}} placeholder="Kết thúc"/>
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                    <Form.Item name="tenant_id" label="Chọn khách thuê" rules={[{required: true}]}>
-                        <Select placeholder="Chọn khách thuê">
-                            {tenants.map(t => (
-                                <Select.Option key={t.tenant_id} value={t.tenant_id}>
-                                    {t.full_name}
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item name="start_date" label="Ngày vào ở" rules={[{required: true}]}><DatePicker style={{width:'100%'}}/></Form.Item>
-
-                    <Form.Item name="end_date" label="Ngày hết hạn"><DatePicker style={{width:'100%'}}/></Form.Item>
-
-                    <Form.Item name="deposit_amount" label="Tiền đặt cọc">
+                    <Form.Item name="deposit_amount" label={<Text strong>Tiền đặt cọc</Text>} style={{marginBottom: 0}}>
                         <InputNumber
                             style={{ width: '100%' }}
+                            addonAfter="đ"
                             formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                            parser={v => v.replace(/\$\s?|(,*)/g, '')}
+                            parser={v => v.replace(/\đ\s?|(,*)/g, '')}
                         />
                     </Form.Item>
-
                 </Form>
             </Modal>
         </div>

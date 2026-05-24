@@ -1,93 +1,117 @@
 import React from 'react';
-import { Card, Col, Row, Statistic, /*Table*/  } from 'antd';
-import { HomeOutlined, UserOutlined, DollarOutlined, ArrowUpOutlined } from '@ant-design/icons';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, /*LineChart, Line*/ } from 'recharts';
+import { Card, Col, Row, Statistic, Typography, List, Badge } from 'antd';
+import { HomeOutlined, UserOutlined, DollarOutlined, BellOutlined } from '@ant-design/icons';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+const { Title, Text } = Typography;
 
 const Dashboard = () => {
-    // Dữ liệu giả lập cho biểu đồ doanh thu 6 tháng qua
     const dataChart = [
-        { name: 'Tháng 11', doanhThu: 15000000 },
-        { name: 'Tháng 12', doanhThu: 18000000 },
-        { name: 'Tháng 01', doanhThu: 12000000 },
-        { name: 'Tháng 02', doanhThu: 25000000 },
-        { name: 'Tháng 03', doanhThu: 22000000 },
-        { name: 'Tháng 04', doanhThu: 30000000 },
+        { name: 'T1', doanhThu: 15000000 },
+        { name: 'T2', doanhThu: 18000000 },
+        { name: 'T3', doanhThu: 12000000 },
+        { name: 'T4', doanhThu: 25000000 },
+        { name: 'T5', doanhThu: 22000000 },
+        { name: 'T6', doanhThu: 30000000 },
     ];
 
     return (
-        <div>
-            <h2 style={{ marginBottom: 24 }}>Báo cáo tổng quan</h2>
+        <div style={{ padding: '0px' }}>
+            {/* Header: Tăng nhẹ level để chữ rõ hơn */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Title level={3} style={{ margin: 0, fontSize: '26px' }}>Báo cáo tổng quan</Title>
+                <Text type="secondary" style={{ fontSize: '14px' }}>Cập nhật lúc: {new Date().toLocaleDateString()}</Text>
+            </div>
 
-            {/* Hàng 1: Các con số thống kê nhanh */}
-            <Row gutter={16}>
+            {/* Hàng 1: Tăng fontSize của Label và Value */}
+            <Row gutter={[12, 12]}>
                 <Col span={6}>
-                    <Card bordered={false} style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <Card bordered={false} bodyStyle={{ padding: '16px' }} style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                         <Statistic
-                            title="Tổng doanh thu tháng này"
+                            title={<Text strong style={{ fontSize: '14px', color: '#595959' }}>DOANH THU THÁNG</Text>}
                             value={30000000}
-                            precision={0}
-                            valueStyle={{ color: '#3f8600' }}
-                            prefix={<DollarOutlined />}
-                            suffix="VNĐ"
+                            valueStyle={{ color: '#3f8600', fontSize: '26px', fontWeight: 'bold' }} // Tăng lên 26px
+                            prefix={<DollarOutlined style={{ fontSize: '20px' }} />}
+                            suffix={<span style={{ fontSize: '14px' }}>đ</span>}
                         />
                     </Card>
                 </Col>
                 <Col span={6}>
-                    <Card bordered={false} style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <Card bordered={false} bodyStyle={{ padding: '16px' }}>
                         <Statistic
-                            title="Tổng số phòng"
+                            title={<Text strong style={{ fontSize: '14px', color: '#595959' }}>TỔNG SỐ PHÒNG</Text>}
                             value={20}
-                            prefix={<HomeOutlined />}
+                            valueStyle={{ fontSize: '26px', fontWeight: 'bold' }}
+                            prefix={<HomeOutlined style={{ fontSize: '20px' }} />}
                         />
                     </Card>
                 </Col>
                 <Col span={6}>
-                    <Card bordered={false} style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <Card bordered={false} bodyStyle={{ padding: '16px' }}>
                         <Statistic
-                            title="Phòng đang trống"
+                            title={<Text strong style={{ fontSize: '14px', color: '#595959' }}>PHÒNG TRỐNG</Text>}
                             value={4}
-                            valueStyle={{ color: '#cf1322' }}
-                            prefix={<ArrowUpOutlined />}
+                            valueStyle={{ color: '#cf1322', fontSize: '26px', fontWeight: 'bold' }}
+                            prefix={<Badge status="error" style={{ marginRight: 8 }} />}
                         />
                     </Card>
                 </Col>
                 <Col span={6}>
-                    <Card bordered={false} style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <Card bordered={false} bodyStyle={{ padding: '16px' }}>
                         <Statistic
-                            title="Khách thuê mới"
+                            title={<Text strong style={{ fontSize: '14px', color: '#595959' }}>KHÁCH THUÊ MỚI</Text>}
                             value={3}
-                            prefix={<UserOutlined />}
+                            valueStyle={{ fontSize: '26px', fontWeight: 'bold' }}
+                            prefix={<UserOutlined style={{ fontSize: '20px' }} />}
                         />
                     </Card>
                 </Col>
             </Row>
 
-            {/* Hàng 2: Biểu đồ doanh thu */}
-            <Row gutter={16} style={{ marginTop: 24 }}>
-                <Col span={16}>
-                    <Card title="Biểu đồ tăng trưởng doanh thu (6 tháng)" bordered={false}>
-                        <div style={{ width: '100%', height: 300 }}>
+            {/* Hàng 2: Biểu đồ và Thông báo */}
+            <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+                <Col span={15}>
+                    <Card
+                        title={<Text strong style={{ fontSize: '16px' }}>Tăng trưởng doanh thu</Text>}
+                        bordered={false}
+                    >
+                        <div style={{ width: '100%', height: 260 }}> {/* Tăng nhẹ chiều cao để biểu đồ thoáng hơn */}
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={dataChart}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip formatter={(value) => value.toLocaleString() + " đ"} />
-                                    <Bar dataKey="doanhThu" fill="#1890ff" radius={[4, 4, 0, 0]} />
+                                <BarChart data={dataChart} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" tick={{ fontSize: 13, fontWeight: 500 }} />
+                                    <YAxis tick={{ fontSize: 13 }} />
+                                    <Tooltip
+                                        contentStyle={{ fontSize: '14px' }}
+                                        formatter={(value) => value.toLocaleString() + " đ"}
+                                    />
+                                    <Bar dataKey="doanhThu" fill="#1890ff" radius={[4, 4, 0, 0]} barSize={40} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </Card>
                 </Col>
 
-                <Col span={8}>
-                    <Card title="Thông báo mới nhất" bordered={false} style={{ height: '100%' }}>
-                        <ul style={{ paddingLeft: 20 }}>
-                            <li style={{ marginBottom: 10 }}>Phòng <b>102</b> vừa thanh toán hóa đơn.</li>
-                            <li style={{ marginBottom: 10 }}>Hợp đồng phòng <b>201</b> sắp hết hạn (còn 5 ngày).</li>
-                            <li style={{ marginBottom: 10 }}>Khách phòng <b>305</b> báo hỏng vòi nước.</li>
-                            <li style={{ marginBottom: 10 }}>Đã chốt số điện tháng 04 cho 15/20 phòng.</li>
-                        </ul>
+                <Col span={9}>
+                    <Card
+                        title={<Text strong style={{ fontSize: '16px' }}><BellOutlined /> Thông báo</Text>}
+                        bordered={false}
+                        style={{ height: '100%' }}
+                    >
+                        <List
+                            size="large" // Chuyển từ small sang large để giãn dòng và tăng chữ
+                            dataSource={[
+                                { text: 'Phòng 102 thanh toán hóa đơn', type: 'success' },
+                                { text: 'Phòng 201 sắp hết hạn hợp đồng', type: 'warning' },
+                                { text: 'Phòng 305 báo hỏng vòi nước', type: 'error' },
+                                { text: 'Đã chốt số điện tháng 04', type: 'info' },
+                            ]}
+                            renderItem={item => (
+                                <List.Item style={{ padding: '12px 0 border-bottom: 1px solid #f0f0f0' }}>
+                                    <Badge status={item.type} text={<Text style={{ fontSize: '15px' }}>{item.text}</Text>} />
+                                </List.Item>
+                            )}
+                        />
                     </Card>
                 </Col>
             </Row>
