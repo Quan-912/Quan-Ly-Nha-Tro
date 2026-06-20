@@ -1,6 +1,6 @@
 import React from 'react';
 import { Form, Input, Button, Card, message, Typography } from 'antd';
-import { UserOutlined, LockOutlined, PhoneOutlined, IdcardOutlined, HomeOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, PhoneOutlined, IdcardOutlined, HomeOutlined, MailOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -39,6 +39,17 @@ const Register = () => {
 
                     <Form.Item name="full_name" rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}>
                         <Input prefix={<UserOutlined />} placeholder="Họ và tên" />
+                    </Form.Item>
+
+                    {/* Email — dùng để khôi phục mật khẩu sau này nên bắt buộc và validate đúng định dạng */}
+                    <Form.Item
+                        name="email"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập email!' },
+                            { type: 'email', message: 'Email không đúng định dạng!' }
+                        ]}
+                    >
+                        <Input prefix={<MailOutlined />} placeholder="Email (dùng để khôi phục mật khẩu)" />
                     </Form.Item>
 
                     <Form.Item name="phone" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại!' }]}>

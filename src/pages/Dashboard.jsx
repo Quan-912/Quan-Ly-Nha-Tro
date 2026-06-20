@@ -1,114 +1,158 @@
-import React from 'react';
-import { Card, Col, Row, Statistic, Typography, List, Badge } from 'antd';
-import { HomeOutlined, UserOutlined, DollarOutlined, BellOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Card, Col, Row, Statistic, Typography, List, Badge, Spin, Alert } from 'antd';
+import { HomeOutlined, UserOutlined, DollarOutlined, BellOutlined, WarningOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import axios from 'axios';
 
 const { Title, Text } = Typography;
 
 const Dashboard = () => {
-    const dataChart = [
-        { name: 'T1', doanhThu: 15000000 },
-        { name: 'T2', doanhThu: 18000000 },
-        { name: 'T3', doanhThu: 12000000 },
-        { name: 'T4', doanhThu: 25000000 },
-        { name: 'T5', doanhThu: 22000000 },
-        { name: 'T6', doanhThu: 30000000 },
-    ];
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        axios.get('http://localhost:5000/api/admin/dashboard-stats')
+            .then(res => {
+                setStats(res.data);
+                setLoading(false);
+            })
+            .catch(err => console.error(err));
+    }, []);
+
+    if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>;
 
     return (
         <div style={{ padding: '0px' }}>
-            {/* Header: Tăng nhẹ level để chữ rõ hơn */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Title level={3} style={{ margin: 0, fontSize: '26px' }}>Báo cáo tổng quan</Title>
-                <Text type="secondary" style={{ fontSize: '14px' }}>Cập nhật lúc: {new Date().toLocaleDateString()}</Text>
+                <Text type="secondary" style={{ fontSize: '14px' }}>Hệ thống quản lý thời gian thực</Text>
             </div>
 
-            {/* Hàng 1: Tăng fontSize của Label và Value */}
-            <Row gutter={[12, 12]}>
-                <Col span={6}>
-                    <Card bordered={false} bodyStyle={{ padding: '16px' }} style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+            {/* Cảnh báo nổi bật nếu có hóa đơn chưa thu */}
+            {stats.unpaid_count > 0 && (
+                <Alert
+                    message={
+                        <Text strong>
+                            Có <span style={{ color: '#cf1322', fontSize: 16 }}>{stats.unpaid_count}</span> hóa đơn chưa thu —
+                            tổng số tiền còn nợ: <span style={{ color: '#cf1322', fontSize: 16 }}>{parseInt(stats.unpaid_amount).toLocaleString()} đ</span>
+                        </Text>
+                    }
+                    type="warning"
+                    showIcon
+                    icon={<WarningOutlined />}
+                    style={{ marginBottom: 20 }}
+                />
+            )}
+
+            {/* Thẻ thống kê nhanh — 5 thẻ, hàng đầu */}
+            <Row gutter={16} style={{ marginBottom: 24 }}>
+                <Col span={5}>
+                    <Card bordered={false} style={{ background: '#e6f7ff' }}>
                         <Statistic
-                            title={<Text strong style={{ fontSize: '14px', color: '#595959' }}>DOANH THU THÁNG</Text>}
-                            value={30000000}
-                            valueStyle={{ color: '#3f8600', fontSize: '26px', fontWeight: 'bold' }} // Tăng lên 26px
-                            prefix={<DollarOutlined style={{ fontSize: '20px' }} />}
-                            suffix={<span style={{ fontSize: '14px' }}>đ</span>}
+                            title="Tổng số phòng"
+                            value={stats.rooms.total_rooms}
+                            prefix={<HomeOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col span={6}>
-                    <Card bordered={false} bodyStyle={{ padding: '16px' }}>
+                <Col span={5}>
+                    <Card bordered={false} style={{ background: '#f6ffed' }}>
                         <Statistic
-                            title={<Text strong style={{ fontSize: '14px', color: '#595959' }}>TỔNG SỐ PHÒNG</Text>}
-                            value={20}
-                            valueStyle={{ fontSize: '26px', fontWeight: 'bold' }}
-                            prefix={<HomeOutlined style={{ fontSize: '20px' }} />}
+                            title="Phòng đang thuê"
+                            value={stats.rooms.occupied_rooms}
+                            valueStyle={{ color: '#389e0d' }}
+                            prefix={<HomeOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col span={6}>
-                    <Card bordered={false} bodyStyle={{ padding: '16px' }}>
+                <Col span={4}>
+                    <Card bordered={false} style={{ background: '#fff7e6' }}>
                         <Statistic
-                            title={<Text strong style={{ fontSize: '14px', color: '#595959' }}>PHÒNG TRỐNG</Text>}
-                            value={4}
-                            valueStyle={{ color: '#cf1322', fontSize: '26px', fontWeight: 'bold' }}
-                            prefix={<Badge status="error" style={{ marginRight: 8 }} />}
+                            title="Khách đang ở"
+                            value={stats.total_tenants}
+                            prefix={<UserOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col span={6}>
-                    <Card bordered={false} bodyStyle={{ padding: '16px' }}>
+                <Col span={5}>
+                    <Card bordered={false} style={{ background: '#f9f0ff' }}>
                         <Statistic
-                            title={<Text strong style={{ fontSize: '14px', color: '#595959' }}>KHÁCH THUÊ MỚI</Text>}
-                            value={3}
-                            valueStyle={{ fontSize: '26px', fontWeight: 'bold' }}
-                            prefix={<UserOutlined style={{ fontSize: '20px' }} />}
+                            title="Doanh thu thực tế"
+                            value={parseInt(stats.total_income).toLocaleString()}
+                            valueStyle={{ color: '#722ed1', fontWeight: 'bold' }}
+                            suffix="đ"
+                            prefix={<DollarOutlined />}
                         />
+                    </Card>
+                </Col>
+                {/* Thẻ hóa đơn chưa thu — nổi bật màu đỏ nhạt */}
+                <Col span={5}>
+                    <Card bordered={false} style={{ background: '#fff1f0', border: stats.unpaid_count > 0 ? '1px solid #ffa39e' : 'none' }}>
+                        <Statistic
+                            title={<Text style={{ color: '#cf1322' }}>Hóa đơn chưa thu</Text>}
+                            value={stats.unpaid_count}
+                            valueStyle={{ color: '#cf1322', fontWeight: 'bold' }}
+                            suffix={<Text style={{ fontSize: 13, color: '#cf1322' }}>hóa đơn</Text>}
+                            prefix={<WarningOutlined style={{ color: '#cf1322' }} />}
+                        />
+                        {stats.unpaid_count > 0 && (
+                            <Text style={{ fontSize: 12, color: '#8c8c8c', display: 'block', marginTop: 4 }}>
+                                ≈ {parseInt(stats.unpaid_amount).toLocaleString()} đ
+                            </Text>
+                        )}
                     </Card>
                 </Col>
             </Row>
 
-            {/* Hàng 2: Biểu đồ và Thông báo */}
-            <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+            <Row gutter={16}>
+                {/* Biểu đồ doanh thu */}
                 <Col span={15}>
                     <Card
-                        title={<Text strong style={{ fontSize: '16px' }}>Tăng trưởng doanh thu</Text>}
+                        title={<Text strong style={{ fontSize: '16px' }}>Biểu đồ doanh thu theo tháng hóa đơn (VND)</Text>}
                         bordered={false}
                     >
-                        <div style={{ width: '100%', height: 260 }}> {/* Tăng nhẹ chiều cao để biểu đồ thoáng hơn */}
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={dataChart} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" tick={{ fontSize: 13, fontWeight: 500 }} />
-                                    <YAxis tick={{ fontSize: 13 }} />
-                                    <Tooltip
-                                        contentStyle={{ fontSize: '14px' }}
-                                        formatter={(value) => value.toLocaleString() + " đ"}
-                                    />
-                                    <Bar dataKey="doanhThu" fill="#1890ff" radius={[4, 4, 0, 0]} barSize={40} />
+                        <div style={{ width: '100%', height: 300 }}>
+                            <ResponsiveContainer>
+                                <BarChart data={stats.chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis tickFormatter={(value) => value.toLocaleString()} />
+                                    <Tooltip formatter={(value) => [value.toLocaleString() + ' đ', 'Doanh thu']} />
+                                    <Bar dataKey="doanhThu" fill="#1890ff" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </Card>
                 </Col>
 
+                {/* Bản tin vận hành — hiển thị động theo dữ liệu thực */}
                 <Col span={9}>
                     <Card
-                        title={<Text strong style={{ fontSize: '16px' }}><BellOutlined /> Thông báo</Text>}
+                        title={<Text strong style={{ fontSize: '16px' }}><BellOutlined /> Bản tin vận hành nhanh</Text>}
                         bordered={false}
                         style={{ height: '100%' }}
                     >
                         <List
-                            size="large" // Chuyển từ small sang large để giãn dòng và tăng chữ
+                            size="large"
                             dataSource={[
-                                { text: 'Phòng 102 thanh toán hóa đơn', type: 'success' },
-                                { text: 'Phòng 201 sắp hết hạn hợp đồng', type: 'warning' },
-                                { text: 'Phòng 305 báo hỏng vòi nước', type: 'error' },
-                                { text: 'Đã chốt số điện tháng 04', type: 'info' },
+                                {
+                                    text: `Hệ thống ghi nhận có ${stats.rooms.available_rooms} phòng trống sẵn sàng đón khách.`,
+                                    type: 'info'
+                                },
+                                {
+                                    text: stats.unpaid_count > 0
+                                        ? `Còn ${stats.unpaid_count} hóa đơn chưa thu, tổng cộng ${parseInt(stats.unpaid_amount).toLocaleString()} đ. Vui lòng kiểm tra mục Hóa đơn.`
+                                        : 'Tất cả hóa đơn đã được thanh toán đầy đủ.',
+                                    type: stats.unpaid_count > 0 ? 'error' : 'success'
+                                },
+                                {
+                                    text: 'Vui lòng kiểm tra mục Quản lý sự cố để xem phản hồi từ khách thuê.',
+                                    type: 'warning'
+                                }
                             ]}
                             renderItem={item => (
-                                <List.Item style={{ padding: '12px 0 border-bottom: 1px solid #f0f0f0' }}>
-                                    <Badge status={item.type} text={<Text style={{ fontSize: '15px' }}>{item.text}</Text>} />
+                                <List.Item style={{ padding: '12px 0' }}>
+                                    <Badge status={item.type} text={<Text style={{ fontSize: '14px' }}>{item.text}</Text>} />
                                 </List.Item>
                             )}
                         />

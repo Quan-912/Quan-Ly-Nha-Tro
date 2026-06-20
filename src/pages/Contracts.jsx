@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import {Table, Button, Modal, Form, Select, DatePicker, InputNumber, message, Tag, Typography, Popconfirm, Badge, Row, Col} from 'antd';
-import { FileDoneOutlined, DeleteOutlined } from '@ant-design/icons';
+import {
+    Table, Button, Modal, Form, Select, DatePicker, InputNumber,
+    message, Tag, Typography, Popconfirm, Badge, Row, Col, Space
+} from 'antd';
+import { FileDoneOutlined, DeleteOutlined, StopOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Text, Title } = Typography;
@@ -26,7 +29,8 @@ const Contracts = () => {
         } catch (error) {
             message.error("Lỗi khi tải dữ liệu!");
         }
-    }
+    };
+
     useEffect(() => { fetchData(); }, []);
 
     const handleCreate = (values) => {
@@ -54,6 +58,20 @@ const Contracts = () => {
         }
     };
 
+    /**
+     * Thanh lý hợp đồng: gọi PUT /terminate → server đổi ACTIVE → EXPIRED
+     * và trả phòng về AVAILABLE, ghi ngày kết thúc thực tế hôm nay.
+     */
+    const handleTerminate = async (contractKey) => {
+        try {
+            await axios.put(`http://localhost:5000/api/contracts/${contractKey}/terminate`);
+            message.success("Đã thanh lý hợp đồng! Phòng đã được giải phóng.");
+            fetchData();
+        } catch (error) {
+            message.error(error.response?.data?.error || "Lỗi khi thanh lý hợp đồng!");
+        }
+    };
+
     const columns = [
         {
             title: 'Phòng',
@@ -76,9 +94,15 @@ const Contracts = () => {
             title: 'Thời hạn',
             key: 'duration',
             render: (_, record) => (
-                <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
-                    <div><Text type="secondary">Từ:</Text> <Text strong>{record.start_date}</Text></div>
-                    <div><Text type="secondary">Đến:</Text> <Text strong>{record.end_date || 'Dài hạn'}</Text></div>
+                <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+                    <div>
+                        <Text type="secondary">Từ:</Text>{' '}
+                        <Text strong>{record.start_date ? new Date(record.start_date).toLocaleDateString('vi-VN') : '—'}</Text>
+                    </div>
+                    <div>
+                        <Text type="secondary">Đến:</Text>{' '}
+                        <Text strong>{record.end_date ? new Date(record.end_date).toLocaleDateString('vi-VN') : 'Dài hạn'}</Text>
+                    </div>
                 </div>
             )
         },
@@ -96,24 +120,64 @@ const Contracts = () => {
             title: 'Trạng thái',
             dataIndex: 'status',
             align: 'center',
-            width: 120,
-            render: s => (
-                <Badge
-                    status={s === 'ACTIVE' ? 'success' : 'error'}
-                    text={<Text style={{ fontSize: '14px' }}>{s === 'ACTIVE' ? 'Hiệu lực' : 'Hết hạn'}</Text>}
-                />
-            )
+            width: 130,
+            render: s => {
+                if (s === 'ACTIVE')
+                    return <Badge status="success" text={<Text style={{ fontSize: '14px' }}>Hiệu lực</Text>} />;
+                if (s === 'EXPIRED')
+                    return <Badge status="default" text={<Text style={{ fontSize: '14px' }}>Đã thanh lý</Text>} />;
+                return <Badge status="error" text={<Text style={{ fontSize: '14px' }}>Hết hạn</Text>} />;
+            }
         },
         {
             title: 'Thao tác',
             key: 'action',
             align: 'center',
-            width: 80,
-            render: (_, record) => (
-                <Popconfirm title="Xóa hợp đồng?" onConfirm={() => handleDelete(record.key || record.contract_id)}>
-                    <Button type="text" size="middle" danger icon={<DeleteOutlined style={{ fontSize: '18px' }} />} />
-                </Popconfirm>
-            )
+            width: 120,
+            render: (_, record) => {
+                const id = record.key || record.contract_id;
+                return (
+                    <Space size="small">
+                        {/* Nút Thanh lý — chỉ hiện khi hợp đồng đang ACTIVE */}
+                        {record.status === 'ACTIVE' && (
+                            <Popconfirm
+                                title="Xác nhận thanh lý hợp đồng?"
+                                description="Phòng sẽ được giải phóng và trở về trạng thái trống."
+                                onConfirm={() => handleTerminate(id)}
+                                okText="Thanh lý"
+                                cancelText="Hủy"
+                                okButtonProps={{ danger: true }}
+                            >
+                                <Button
+                                    type="text"
+                                    size="middle"
+                                    icon={<StopOutlined style={{ color: '#fa8c16', fontSize: '18px' }} />}
+                                    title="Thanh lý hợp đồng"
+                                />
+                            </Popconfirm>
+                        )}
+
+                        {/* Nút Xóa — chỉ hiện khi hợp đồng đã EXPIRED (không cho xóa đang ACTIVE) */}
+                        {record.status !== 'ACTIVE' && (
+                            <Popconfirm
+                                title="Xóa hợp đồng?"
+                                description="Hành động này không thể hoàn tác."
+                                onConfirm={() => handleDelete(id)}
+                                okText="Xóa"
+                                cancelText="Hủy"
+                            >
+                                <Button
+                                    type="text"
+                                    size="middle"
+                                    danger
+                                    icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
+                                    title="Xóa hợp đồng"
+                                />
+                            </Popconfirm>
+                        )}
+                    </Space>
+                );
+            }
         }
     ];
 
@@ -135,7 +199,7 @@ const Contracts = () => {
             <Table
                 dataSource={contracts}
                 columns={columns}
-                size="middle" // Chuyển từ small sang middle để dòng thoáng hơn, chữ to hơn tự nhiên
+                size="middle"
                 pagination={{ pageSize: 8 }}
                 bordered
             />
@@ -149,15 +213,10 @@ const Contracts = () => {
                 okText="Ký kết"
                 cancelText="Hủy"
             >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleCreate}
-                    size="large" // Tăng size các ô Input để thầy dễ nhìn
-                >
+                <Form form={form} layout="vertical" onFinish={handleCreate} size="large">
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="room_id" label={<Text strong>Phòng trống</Text>} rules={[{required: true}]}>
+                            <Form.Item name="room_id" label={<Text strong>Phòng trống</Text>} rules={[{ required: true }]}>
                                 <Select placeholder="Chọn phòng">
                                     {rooms.map(r => (
                                         <Select.Option key={r.room_id} value={r.room_id}>{r.room_number}</Select.Option>
@@ -166,7 +225,7 @@ const Contracts = () => {
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item name="tenant_id" label={<Text strong>Khách thuê</Text>} rules={[{required: true}]}>
+                            <Form.Item name="tenant_id" label={<Text strong>Khách thuê</Text>} rules={[{ required: true }]}>
                                 <Select placeholder="Chọn khách">
                                     {tenants.map(t => (
                                         <Select.Option key={t.tenant_id} value={t.tenant_id}>{t.full_name}</Select.Option>
@@ -178,18 +237,18 @@ const Contracts = () => {
 
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="start_date" label={<Text strong>Ngày vào ở</Text>} rules={[{required: true}]}>
-                                <DatePicker style={{width:'100%'}} placeholder="Bắt đầu"/>
+                            <Form.Item name="start_date" label={<Text strong>Ngày vào ở</Text>} rules={[{ required: true }]}>
+                                <DatePicker style={{ width: '100%' }} placeholder="Bắt đầu" />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item name="end_date" label={<Text strong>Ngày hết hạn</Text>}>
-                                <DatePicker style={{width:'100%'}} placeholder="Kết thúc"/>
+                                <DatePicker style={{ width: '100%' }} placeholder="Kết thúc" />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    <Form.Item name="deposit_amount" label={<Text strong>Tiền đặt cọc</Text>} style={{marginBottom: 0}}>
+                    <Form.Item name="deposit_amount" label={<Text strong>Tiền đặt cọc</Text>} style={{ marginBottom: 0 }}>
                         <InputNumber
                             style={{ width: '100%' }}
                             addonAfter="đ"
