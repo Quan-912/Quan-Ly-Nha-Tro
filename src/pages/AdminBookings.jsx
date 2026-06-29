@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
     Table, Tag, Button, Space, Typography, message,
-    Modal, Form, Input, InputNumber, Descriptions, Popconfirm
+    Modal, Form, Input, InputNumber, Descriptions, Popconfirm, DatePicker
 } from 'antd';
 import {
     CheckCircleOutlined, CloseCircleOutlined,
     ClockCircleOutlined, HomeOutlined, DollarOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -47,7 +48,10 @@ const AdminBookings = () => {
         try {
             await axios.put(
                 `http://localhost:5000/api/admin/bookings/${approveModal.booking.booking_id}/approve`,
-                { deposit_amount: values.deposit_amount || 0 }
+                {
+                    deposit_amount: values.deposit_amount || 0,
+                    end_date: values.end_date ? values.end_date.format('YYYY-MM-DD') : null
+                }
             );
             message.success('Đã duyệt! Hợp đồng được tạo tự động.');
             setApproveModal({ open: false, booking: null });
@@ -243,6 +247,18 @@ const AdminBookings = () => {
                                     formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                     parser={v => v.replace(/\đ\s?|(,*)/g, '')}
                                     placeholder="Nhập 0 nếu không thu cọc"
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="end_date"
+                                label={<Text strong>Ngày hết hạn hợp đồng</Text>}
+                                rules={[{ required: true, message: 'Vui lòng chọn ngày hết hạn!' }]}
+                            >
+                                <DatePicker
+                                    style={{ width: '100%' }}
+                                    format="DD/MM/YYYY"
+                                    placeholder="Chọn ngày kết thúc hợp đồng"
+                                    disabledDate={d => d && d < dayjs().endOf('day')}
                                 />
                             </Form.Item>
                         </Form>

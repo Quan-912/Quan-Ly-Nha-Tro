@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
     Table, Tag, Button, Space, Modal, Form, Input, InputNumber,
-    Select, message, Popconfirm, Typography, Row, Col
+    Select, message, Popconfirm, Typography, Row, Col, Upload, Image
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, UploadOutlined, PictureOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Title, Text } = Typography;
@@ -13,6 +13,7 @@ const RoomManagement = () => {
     const [dataSource, setDataSource] = useState([]);
     const [editingRoom, setEditingRoom] = useState(null);
     const [form] = Form.useForm();
+    const [uploadingImageId, setUploadingImageId] = useState(null);
 
     const fetchRooms = async () => {
         try {
@@ -48,7 +49,7 @@ const RoomManagement = () => {
                     message.success('Đã cập nhật!');
                 } else {
                     await axios.post('http://localhost:5000/api/rooms', values);
-                    message.success('Đã thêm!');
+                    message.success('Đã thêm! Hãy bổ sung ảnh cho phòng ở cột "Ảnh".');
                 }
                 setIsModalOpen(false);
                 setEditingRoom(null);
@@ -60,11 +61,6 @@ const RoomManagement = () => {
         });
     };
 
-    /**
-     * Xóa phòng. Nếu server trả về hasHistory (phòng đã từng có hợp đồng),
-     * gợi ý admin chuyển sang trạng thái Ngừng hoạt động thay vì xóa cứng,
-     * để không phá vỡ dữ liệu hóa đơn/hợp đồng lịch sử.
-     */
     const handleDelete = async (id) => {
         try {
             await axios.delete(`http://localhost:5000/api/rooms/${id}`);
@@ -106,7 +102,79 @@ const RoomManagement = () => {
         }
     };
 
+    // Đổi/cập nhật ảnh phòng — gửi ngay khi chọn file
+    const handleImageChange = async (roomId, info) => {
+        const file = info.file;
+        if (!file) return;
+        if (!file.type?.startsWith('image/')) { message.error('Chỉ chấp nhận file ảnh!'); return; }
+        if (file.size > 5 * 1024 * 1024) { message.error('Ảnh không được vượt quá 5MB!'); return; }
+
+        setUploadingImageId(roomId);
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            await axios.post(`http://localhost:5000/api/rooms/${roomId}/image`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            message.success('Cập nhật ảnh phòng thành công!');
+            fetchRooms();
+        } catch (err) {
+            message.error('Lỗi tải ảnh lên!');
+        } finally {
+            setUploadingImageId(null);
+        }
+    };
+
     const columns = [
+        {
+            title: 'Ảnh',
+            dataIndex: 'image_path',
+            width: 90,
+            align: 'center',
+            render: (imagePath, record) => {
+                const id = record.key || record.room_id;
+                return (
+                    <div style={{ position: 'relative', width: 50, height: 50, margin: '0 auto' }}>
+                        {imagePath ? (
+                            <Image
+                                src={`http://localhost:5000${imagePath}`}
+                                width={50}
+                                height={50}
+                                style={{ objectFit: 'cover', borderRadius: 6 }}
+                            />
+                        ) : (
+                            <div style={{
+                                width: 50, height: 50, background: '#f0f0f0', borderRadius: 6,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <PictureOutlined style={{ color: '#bfbfbf' }} />
+                            </div>
+                        )}
+
+                        <Upload
+                            showUploadList={false}
+                            beforeUpload={() => false}
+                            accept="image/*"
+                            onChange={(info) => handleImageChange(id, info)}
+                            disabled={uploadingImageId === id}
+                        >
+                            <div
+                                style={{
+                                    position: 'absolute', bottom: -4, right: -4,
+                                    background: '#1890ff', borderRadius: '50%',
+                                    width: 20, height: 20, display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer', border: '1px solid #fff'
+                                }}
+                                title="Đổi ảnh"
+                            >
+                                <UploadOutlined style={{ color: '#fff', fontSize: 11 }} />
+                            </div>
+                        </Upload>
+                    </div>
+                );
+            }
+        },
         {
             title: 'Số phòng',
             dataIndex: 'room_number',
@@ -305,6 +373,12 @@ const RoomManagement = () => {
                             <Select.Option value="OCCUPIED">ĐÃ THUÊ</Select.Option>
                         </Select>
                     </Form.Item>
+
+                    {!editingRoom && (
+                        <Text type="secondary" italic style={{ fontSize: 13 }}>
+                            * Sau khi thêm phòng, bấm vào ô ảnh ở cột "Ảnh" trong bảng để tải ảnh lên.
+                        </Text>
+                    )}
                 </Form>
             </Modal>
         </div>

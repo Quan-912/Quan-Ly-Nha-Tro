@@ -12,6 +12,73 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+/**
+ * Middleware phân quyền cơ bản theo vai trò (RBAC).
+ * Đọc user_id + role từ header do frontend gửi kèm (được set sau khi đăng nhập),
+ * đối chiếu lại với CSDL để xác nhận role đó thực sự thuộc về user_id đó —
+ * tránh trường hợp client tự sửa role trong localStorage để giả mạo quyền Admin.
+ */
+const verifyRole = (allowedRoles) => (req, res, next) => {
+    const userId = req.headers['x-user-id'];
+    const userRole = req.headers['x-user-role'];
+
+    if (!userId || !userRole) {
+        return res.status(401).json({ error: "Thiếu thông tin xác thực! Vui lòng đăng nhập lại." });
+    }
+    if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ error: "Bạn không có quyền truy cập chức năng này!" });
+    }
+
+    db.query("SELECT role FROM Users WHERE user_id = ?", [userId], (err, result) => {
+        if (err) return res.status(500).json({ error: "Lỗi xác thực quyền truy cập!" });
+        if (result.length === 0 || result[0].role !== userRole) {
+            return res.status(403).json({ error: "Thông tin xác thực không hợp lệ!" });
+        }
+        next();
+    });
+};
+
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Cho phép frontend truy cập file ảnh qua URL dạng: http://localhost:5000/uploads/rooms/xxx.jpg
+app.use('/uploads', express.static('uploads'));
+
+// Cấu hình Multer cho ảnh phòng — chỉ 1 ảnh/phòng
+const roomImageStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 'uploads/rooms'),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, `room_${req.params.id}_${Date.now()}${ext}`);
+    }
+});
+const uploadRoomImage = multer({
+    storage: roomImageStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) return cb(new Error('Chỉ chấp nhận file ảnh!'));
+        cb(null, true);
+    }
+});
+
+// Cấu hình Multer cho avatar khách thuê — 1 ảnh
+const avatarStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 'uploads/avatars'),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, `avatar_${req.params.userId}_${Date.now()}${ext}`);
+    }
+});
+const uploadAvatar = multer({
+    storage: avatarStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) return cb(new Error('Chỉ chấp nhận file ảnh!'));
+        cb(null, true);
+    }
+});
+
 // Cấu hình kết nối MySQL
 const db = mysql.createConnection({
     host: 'localhost',
@@ -141,7 +208,7 @@ app.post('/api/forgot-password', (req, res) => {
 // ============================================================
 
 app.get('/api/rooms', (req, res) => {
-    const sql = "SELECT room_id, room_id as 'key', room_number, room_type, base_price, area, floor, description, status FROM Rooms";
+    const sql = "SELECT room_id, room_id as 'key', room_number, room_type, base_price, area, floor, description, status, image_path FROM Rooms";
     db.query(sql, (err, data) => {
         if (err) return res.status(500).json(err);
         return res.json(data);
@@ -175,7 +242,7 @@ app.get('/api/rooms/check-number', (req, res) => {
     });
 });
 
-app.post('/api/rooms', (req, res) => {
+app.post('/api/rooms', verifyRole(['ADMIN']), (req, res) => {
     const { room_number, room_type, base_price, area, floor, description, status } = req.body;
     const sql = "INSERT INTO Rooms (room_number, room_type, base_price, area, floor, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
     db.query(sql, [room_number, room_type, base_price, area || null, floor || null, description || null, status || 'AVAILABLE'], (err, data) => {
@@ -184,7 +251,7 @@ app.post('/api/rooms', (req, res) => {
     });
 });
 
-app.put('/api/rooms/:id', (req, res) => {
+app.put('/api/rooms/:id', verifyRole(['ADMIN']), (req, res) => {
     const { room_number, room_type, base_price, area, floor, description, status } = req.body;
     const sql = "UPDATE Rooms SET room_number = ?, room_type = ?, base_price = ?, area = ?, floor = ?, description = ?, status = ? WHERE room_id = ?";
     db.query(sql, [room_number, room_type, base_price, area || null, floor || null, description || null, status, req.params.id], (err, result) => {
@@ -199,7 +266,7 @@ app.put('/api/rooms/:id', (req, res) => {
  * vĩnh viễn vì sẽ vi phạm khóa ngoại và làm mất dấu lịch sử hóa đơn/hợp đồng.
  * Trả về hasHistory: true để frontend gợi ý chuyển sang "Ngừng hoạt động" thay thế.
  */
-app.delete('/api/rooms/:id', (req, res) => {
+app.delete('/api/rooms/:id', verifyRole(['ADMIN']), (req, res) => {
     const roomId = req.params.id;
 
     db.query("SELECT COUNT(*) as total FROM Contracts WHERE room_id = ?", [roomId], (err, result) => {
@@ -221,7 +288,7 @@ app.delete('/api/rooms/:id', (req, res) => {
 
 // Ngừng hoạt động phòng (soft-delete) — dùng cho phòng có lịch sử hợp đồng.
 // Ẩn khỏi danh sách phòng trống mà không phá vỡ dữ liệu Contracts/Invoices.
-app.put('/api/rooms/:id/deactivate', (req, res) => {
+app.put('/api/rooms/:id/deactivate', verifyRole(['ADMIN']), (req, res) => {
     const sql = "UPDATE Rooms SET status = 'INACTIVE' WHERE room_id = ?";
     db.query(sql, [req.params.id], (err) => {
         if (err) return res.status(500).json({ error: "Lỗi khi ngừng hoạt động phòng!" });
@@ -230,7 +297,7 @@ app.put('/api/rooms/:id/deactivate', (req, res) => {
 });
 
 // Kích hoạt lại phòng đã ngừng hoạt động → trở về trạng thái còn trống.
-app.put('/api/rooms/:id/reactivate', (req, res) => {
+app.put('/api/rooms/:id/reactivate', verifyRole(['ADMIN']), (req, res) => {
     const sql = "UPDATE Rooms SET status = 'AVAILABLE' WHERE room_id = ?";
     db.query(sql, [req.params.id], (err) => {
         if (err) return res.status(500).json({ error: "Lỗi khi kích hoạt lại phòng!" });
@@ -238,10 +305,49 @@ app.put('/api/rooms/:id/reactivate', (req, res) => {
     });
 });
 
-// API lấy danh sách các phòng đang còn trống (status = 'AVAILABLE')
+// Upload/thay ảnh đại diện cho 1 phòng — xóa ảnh cũ trước khi lưu ảnh mới (giống cơ chế avatar)
+app.post('/api/rooms/:id/image', uploadRoomImage.single('image'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "Vui lòng chọn ảnh!" });
+    const roomId = req.params.id;
+    const newPath = `/uploads/rooms/${req.file.filename}`;
+
+    db.query("SELECT image_path FROM Rooms WHERE room_id = ?", [roomId], (err, result) => {
+        if (err) return res.status(500).json({ error: "Lỗi truy vấn!" });
+        const oldPath = result[0]?.image_path;
+
+        db.query("UPDATE Rooms SET image_path = ? WHERE room_id = ?", [newPath, roomId], (updateErr) => {
+            if (updateErr) return res.status(500).json({ error: "Lỗi lưu ảnh!" });
+            if (oldPath) fs.unlink(path.join(__dirname, oldPath), () => {});
+            return res.json({ message: "Cập nhật ảnh phòng thành công!", image_path: newPath });
+        });
+    });
+});
+
+// API lấy danh sách các phòng đang còn trống (status = 'AVAILABLE'), hỗ trợ tìm kiếm và lọc
 app.get('/api/tenant/available-rooms', (req, res) => {
-    const sql = "SELECT room_id, room_number, room_type, base_price, area, floor, description, status FROM Rooms WHERE status = 'AVAILABLE' OR status = 'CÒN TRỐNG'";
-    db.query(sql, (err, data) => {
+    const { room_number, min_price, max_price, room_type } = req.query;
+
+    let sql = "SELECT room_id, room_number, room_type, base_price, area, floor, description, status FROM Rooms WHERE (status = 'AVAILABLE' OR status = 'CÒN TRỐNG')";
+    const params = [];
+
+    if (room_number && room_number.trim() !== '') {
+        sql += " AND room_number LIKE ?";
+        params.push(`%${room_number.trim()}%`);
+    }
+    if (min_price) {
+        sql += " AND base_price >= ?";
+        params.push(Number(min_price));
+    }
+    if (max_price) {
+        sql += " AND base_price <= ?";
+        params.push(Number(max_price));
+    }
+    if (room_type) {
+        sql += " AND room_type = ?";
+        params.push(room_type);
+    }
+
+    db.query(sql, params, (err, data) => {
         if (err) {
             console.error("Lỗi lấy danh sách phòng trống:", err);
             return res.status(500).json({ error: "Lỗi hệ thống khi lấy danh sách phòng" });
@@ -339,11 +445,12 @@ app.post('/api/tenant/self-booking', (req, res) => {
 // 3. QUẢN LÝ KHÁCH THUÊ (Tenants)
 // ============================================================
 
-app.get('/api/tenants', (req, res) => {
+app.get('/api/tenants', verifyRole(['ADMIN']), (req, res) => {
     const sql = `
-        SELECT t.tenant_id, t.tenant_id as 'key', u.full_name, u.username, u.email, t.phone, t.cccd, t.hometown
+        SELECT t.tenant_id, t.tenant_id as 'key', u.full_name, u.username, u.email,
+               u.avatar_path, t.phone, t.cccd, t.hometown
         FROM Tenants t
-        JOIN Users u ON t.user_id = u.user_id
+                 JOIN Users u ON t.user_id = u.user_id
     `;
     db.query(sql, (err, data) => {
         if (err) return res.status(500).json(err);
@@ -351,22 +458,72 @@ app.get('/api/tenants', (req, res) => {
     });
 });
 
-// Đã thêm "email" — lưu vào bảng Users để dùng cho chức năng quên mật khẩu.
+// Kiểm tra email đã tồn tại trong hệ thống chưa — dùng cho async validator ở form đăng ký.
+app.get('/api/check-email', (req, res) => {
+    const { email } = req.query;
+
+    if (!email || email.trim() === '') {
+        return res.status(400).json({ error: "Thiếu email cần kiểm tra!" });
+    }
+
+    const sql = "SELECT user_id FROM Users WHERE email = ?";
+    db.query(sql, [email.trim()], (err, result) => {
+        if (err) return res.status(500).json({ error: "Lỗi hệ thống!" });
+        return res.json({ exists: result.length > 0 });
+    });
+});
+// Route công khai — Khách thuê TỰ đăng ký tài khoản (không cần đăng nhập trước, không qua middleware)
 app.post('/api/tenants', async (req, res) => {
     const { username, password, full_name, email, phone, cccd, hometown } = req.body;
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+        return res.status(400).json({ error: "Email không đúng định dạng!" });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!password || !passwordRegex.test(password)) {
+        return res.status(400).json({ error: "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số!" });
+    }
+
+    try {
+        db.query("SELECT user_id FROM Users WHERE email = ?", [email], async (checkErr, checkResult) => {
+            if (checkErr) return res.status(500).json({ error: "Lỗi kiểm tra email!" });
+            if (checkResult.length > 0) {
+                return res.status(400).json({ error: "Email này đã được sử dụng cho tài khoản khác!" });
+            }
+
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
+            const sqlUser = "INSERT INTO Users (username, password_hash, role, full_name, email) VALUES (?, ?, 'TENANT', ?, ?)";
+            db.query(sqlUser, [username, hashedPassword, full_name, email], (err, result) => {
+                if (err) return res.status(500).json(err);
+                const userId = result.insertId;
+                const sqlTenant = "INSERT INTO Tenants (user_id, phone, cccd, hometown) VALUES (?, ?, ?, ?)";
+                db.query(sqlTenant, [userId, phone, cccd, hometown], (err2) => {
+                    if (err2) return res.status(500).json(err2);
+                    return res.json("Thêm khách thuê và bảo mật mật khẩu thành công!");
+                });
+            });
+        });
+    } catch (e) {
+        res.status(500).json("Lỗi mã hóa dữ liệu");
+    }
+});
+
+// Route riêng — chỉ ADMIN gọi để thêm khách thuê trực tiếp từ trang quản trị (Tenants.jsx)
+app.post('/api/admin/tenants', verifyRole(['ADMIN']), async (req, res) => {
+    const { username, password, full_name, phone, cccd, hometown } = req.body;
+
     try {
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-        const sqlUser = "INSERT INTO Users (username, password_hash, role, full_name, email) VALUES (?, ?, 'TENANT', ?, ?)";
-        db.query(sqlUser, [username, hashedPassword, full_name, email || null], (err, result) => {
+        const sqlUser = "INSERT INTO Users (username, password_hash, role, full_name) VALUES (?, ?, 'TENANT', ?)";
+        db.query(sqlUser, [username, hashedPassword, full_name], (err, result) => {
             if (err) return res.status(500).json(err);
-
             const userId = result.insertId;
             const sqlTenant = "INSERT INTO Tenants (user_id, phone, cccd, hometown) VALUES (?, ?, ?, ?)";
             db.query(sqlTenant, [userId, phone, cccd, hometown], (err2) => {
                 if (err2) return res.status(500).json(err2);
-                return res.json("Thêm khách thuê và bảo mật mật khẩu thành công!");
+                return res.json("Đã thêm khách thuê thành công!");
             });
         });
     } catch (e) {
@@ -393,7 +550,7 @@ app.get('/api/contracts', (req, res) => {
     });
 });
 
-app.post('/api/contracts', (req, res) => {
+app.post('/api/contracts', verifyRole(['ADMIN']), (req, res) => {
     const { room_id, tenant_id, start_date, end_date, deposit_amount } = req.body;
     const sql = "INSERT INTO Contracts (room_id, tenant_id, start_date, end_date, deposit_amount, status) VALUES (?, ?, ?, ?, ?, 'ACTIVE')";
 
@@ -405,7 +562,7 @@ app.post('/api/contracts', (req, res) => {
     });
 });
 
-app.delete('/api/contracts/:id', (req, res) => {
+app.delete('/api/contracts/:id', verifyRole(['ADMIN']), (req, res) => {
     const contractId = req.params.id;
     db.query("SELECT room_id FROM Contracts WHERE contract_id = ?", [contractId], (err, result) => {
         if (err || result.length === 0) return res.status(404).json("Hợp đồng không tồn tại");
@@ -421,14 +578,16 @@ app.delete('/api/contracts/:id', (req, res) => {
 
 /**
  * Thanh lý hợp đồng: đổi status → EXPIRED, phòng → AVAILABLE, ghi ngày kết thúc thực tế.
+ * Tự động hoàn trả toàn bộ tiền cọc đã đóng (do hệ thống không có cơ chế ghi nhận
+ * khoản trừ/phí phạt riêng, nên mặc định hoàn trả đủ deposit_amount đã lưu).
  * Chỉ cho phép thanh lý hợp đồng đang ACTIVE.
  */
-app.put('/api/contracts/:id/terminate', (req, res) => {
+app.put('/api/contracts/:id/terminate', verifyRole(['ADMIN']),(req, res) => {
     const contractId = req.params.id;
     const today = new Date().toISOString().split('T')[0];
 
     db.query(
-        "SELECT room_id, status FROM Contracts WHERE contract_id = ?",
+        "SELECT room_id, status, deposit_amount FROM Contracts WHERE contract_id = ?",
         [contractId],
         (err, result) => {
             if (err || result.length === 0)
@@ -438,11 +597,12 @@ app.put('/api/contracts/:id/terminate', (req, res) => {
                 return res.status(400).json({ error: "Chỉ có thể thanh lý hợp đồng đang hiệu lực!" });
 
             const roomId = result[0].room_id;
+            const refundAmount = result[0].deposit_amount || 0;
 
-            // Bước 1: Cập nhật hợp đồng → EXPIRED + ghi ngày kết thúc thực tế
+            // Bước 1: Cập nhật hợp đồng → EXPIRED + ghi ngày kết thúc thực tế + số tiền đã hoàn cọc
             db.query(
-                "UPDATE Contracts SET status = 'EXPIRED', end_date = ? WHERE contract_id = ?",
-                [today, contractId],
+                "UPDATE Contracts SET status = 'EXPIRED', end_date = ?, refunded_amount = ? WHERE contract_id = ?",
+                [today, refundAmount, contractId],
                 (err2) => {
                     if (err2) return res.status(500).json({ error: "Lỗi cập nhật hợp đồng!" });
 
@@ -452,13 +612,32 @@ app.put('/api/contracts/:id/terminate', (req, res) => {
                         [roomId],
                         (err3) => {
                             if (err3) return res.status(500).json({ error: "Lỗi cập nhật trạng thái phòng!" });
-                            return res.json({ message: "Thanh lý hợp đồng thành công! Phòng đã được giải phóng." });
+                            return res.json({
+                                message: `Thanh lý hợp đồng thành công! Đã hoàn trả ${refundAmount.toLocaleString('vi-VN')}đ tiền cọc. Phòng đã được giải phóng.`,
+                                refunded_amount: refundAmount
+                            });
                         }
                     );
                 }
             );
         }
     );
+});
+
+// Gia hạn hợp đồng — chỉ cho phép sửa ngày hết hạn của hợp đồng đang ACTIVE.
+app.put('/api/contracts/:id/extend', verifyRole(['ADMIN']),(req, res) => {
+    const { new_end_date } = req.body;
+    if (!new_end_date) return res.status(400).json({ error: "Vui lòng chọn ngày hết hạn mới!" });
+
+    db.query("SELECT status FROM Contracts WHERE contract_id = ?", [req.params.id], (err, result) => {
+        if (err || result.length === 0) return res.status(404).json({ error: "Hợp đồng không tồn tại!" });
+        if (result[0].status !== 'ACTIVE') return res.status(400).json({ error: "Chỉ có thể gia hạn hợp đồng đang hiệu lực!" });
+
+        db.query("UPDATE Contracts SET end_date = ? WHERE contract_id = ?", [new_end_date, req.params.id], (err2) => {
+            if (err2) return res.status(500).json({ error: "Lỗi gia hạn hợp đồng!" });
+            return res.json({ message: "Đã gia hạn hợp đồng thành công!" });
+        });
+    });
 });
 
 // ============================================================
@@ -473,7 +652,7 @@ app.get('/api/services', (req, res) => {
     });
 });
 
-app.put('/api/services/:id', (req, res) => {
+app.put('/api/services/:id', verifyRole(['ADMIN']),(req, res) => {
     const { unit_price } = req.body;
     const sql = "UPDATE Services SET unit_price = ? WHERE service_id = ?";
     db.query(sql, [unit_price, req.params.id], (err, result) => {
@@ -482,7 +661,7 @@ app.put('/api/services/:id', (req, res) => {
     });
 });
 
-app.post('/api/invoices', (req, res) => {
+app.post('/api/invoices', verifyRole(['ADMIN']),(req, res) => {
     const { room_id, billing_month, services } = req.body;
 
     // Bước 1: Kiểm tra chỉ số âm (new_index < old_index) trước khi lưu
@@ -500,17 +679,25 @@ app.post('/api/invoices', (req, res) => {
             return res.status(400).json({ error: `Phòng này đã có hóa đơn tháng ${billing_month} rồi! Không thể lập thêm.` });
         }
 
-        // Bước 3: Tạo hóa đơn
-        const total_amount = services.reduce((sum, s) => sum + s.sub_total, 0);
-        const sqlInvoice = "INSERT INTO Invoices (room_id, billing_month, total_amount, status) VALUES (?, ?, ?, 'UNPAID')";
-        db.query(sqlInvoice, [room_id, billing_month, total_amount], (err, result) => {
-            if (err) return res.status(500).json(err);
-            const invoiceId = result.insertId;
-            const detailValues = services.map(s => [invoiceId, s.service_id, s.old_index, s.new_index, s.quantity, s.sub_total]);
-            const sqlDetails = "INSERT INTO Invoice_Details (invoice_id, service_id, old_index, new_index, quantity, sub_total) VALUES ?";
-            db.query(sqlDetails, [detailValues], (err2) => {
-                if (err2) return res.status(500).json(err2);
-                return res.json({ message: "Đã xuất hóa đơn!", invoiceId });
+        // Bước 3: Lấy tiền phòng cố định (base_price) của phòng để cộng vào tổng tiền
+        db.query("SELECT base_price FROM Rooms WHERE room_id = ?", [room_id], (roomErr, roomResult) => {
+            if (roomErr || roomResult.length === 0) return res.status(400).json({ error: "Không tìm thấy thông tin phòng!" });
+            const roomRent = parseFloat(roomResult[0].base_price) || 0;
+
+            // Bước 4: Tổng tiền = Tiền phòng cố định + tổng tiền các dịch vụ (điện, nước, dịch vụ khác)
+            const servicesTotal = services.reduce((sum, s) => sum + s.sub_total, 0);
+            const total_amount = roomRent + servicesTotal;
+
+            const sqlInvoice = "INSERT INTO Invoices (room_id, billing_month, room_rent, total_amount, status) VALUES (?, ?, ?, ?, 'UNPAID')";
+            db.query(sqlInvoice, [room_id, billing_month, roomRent, total_amount], (err, result) => {
+                if (err) return res.status(500).json(err);
+                const invoiceId = result.insertId;
+                const detailValues = services.map(s => [invoiceId, s.service_id, s.old_index, s.new_index, s.quantity, s.sub_total]);
+                const sqlDetails = "INSERT INTO Invoice_Details (invoice_id, service_id, old_index, new_index, quantity, sub_total) VALUES ?";
+                db.query(sqlDetails, [detailValues], (err2) => {
+                    if (err2) return res.status(500).json(err2);
+                    return res.json({ message: "Đã xuất hóa đơn!", invoiceId });
+                });
             });
         });
     });
@@ -533,7 +720,7 @@ app.get('/api/invoices', (req, res) => {
 // QUAN TRỌNG: khai báo trước app.put('/api/invoices/:id/pay') để Express không nhầm ":id".
 app.get('/api/invoices/:id/details', (req, res) => {
     const sql = `
-        SELECT 
+        SELECT
             id.detail_id,
             s.service_name,
             s.unit,
@@ -542,7 +729,7 @@ app.get('/api/invoices/:id/details', (req, res) => {
             id.quantity,
             id.sub_total
         FROM Invoice_Details id
-        JOIN Services s ON id.service_id = s.service_id
+                 JOIN Services s ON id.service_id = s.service_id
         WHERE id.invoice_id = ?
         ORDER BY id.detail_id ASC
     `;
@@ -551,11 +738,18 @@ app.get('/api/invoices/:id/details', (req, res) => {
             console.error('Lỗi lấy chi tiết hóa đơn:', err);
             return res.status(500).json({ error: 'Lỗi hệ thống!' });
         }
-        return res.json(data);
+        // Lấy thêm room_rent từ bảng Invoices để hiển thị dòng "Tiền phòng cố định"
+        db.query("SELECT room_rent FROM Invoices WHERE invoice_id = ?", [req.params.id], (err2, invResult) => {
+            if (err2) return res.status(500).json({ error: 'Lỗi hệ thống!' });
+            return res.json({
+                room_rent: invResult[0]?.room_rent || 0,
+                details: data
+            });
+        });
     });
 });
 
-app.put('/api/invoices/:id/pay', (req, res) => {
+app.put('/api/invoices/:id/pay', verifyRole(['ADMIN']),(req, res) => {
     const sql = "UPDATE Invoices SET status = 'PAID' WHERE invoice_id = ?";
     db.query(sql, [req.params.id], (err, result) => {
         if (err) return res.status(500).json(err);
@@ -605,7 +799,7 @@ app.get('/api/tenant/room-info/:userId', (req, res) => {
 // 7. API THỐNG KÊ DASHBOARD (Dành cho Admin)
 // ============================================================
 
-app.get('/api/admin/dashboard-stats', (req, res) => {
+app.get('/api/admin/dashboard-stats', verifyRole(['ADMIN']), (req, res) => {
     const queryRooms = `
         SELECT 
             COUNT(*) as total_rooms,
@@ -658,7 +852,7 @@ app.get('/api/admin/dashboard-stats', (req, res) => {
 // ============================================================
 
 // Khách thuê gửi báo cáo hỏng hóc lên hệ thống
-app.post('/api/issues', (req, res) => {
+app.post('/api/issues', verifyRole(['TENANT']), (req, res) => {
     const { tenant_id, room_id, title, description, severity, status } = req.body;
 
     if (!tenant_id || !title || !description) {
@@ -700,7 +894,7 @@ app.get('/api/tenant/issues/:tenantId', (req, res) => {
 });
 
 // Admin lấy toàn bộ sự cố kèm thông tin phòng và khách báo cáo
-app.get('/api/admin/issues', (req, res) => {
+app.get('/api/admin/issues', verifyRole(['ADMIN']), (req, res) => {
     const sql = `
         SELECT i.issue_id as 'key', i.issue_id, r.room_number, u.full_name, 
                i.title, i.description, i.status, i.created_at
@@ -721,7 +915,7 @@ app.get('/api/admin/issues', (req, res) => {
 });
 
 // Admin cập nhật tiến độ sửa chữa
-app.put('/api/admin/issues/:id', (req, res) => {
+app.put('/api/admin/issues/:id', verifyRole(['ADMIN']), (req, res) => {
     const { status } = req.body;
     const sql = "UPDATE Issues SET status = ? WHERE issue_id = ?";
     db.query(sql, [status, req.params.id], (err, result) => {
@@ -771,17 +965,10 @@ app.get('/api/tenant/invoices/:tenantId', (req, res) => {
  */
 app.get('/api/tenant/profile/:userId', (req, res) => {
     const sql = `
-        SELECT 
-            u.user_id,
-            u.username,
-            u.full_name,
-            u.email,
-            t.tenant_id,
-            t.phone,
-            t.cccd,
-            t.hometown
+        SELECT u.user_id, u.username, u.full_name, u.email, u.avatar_path,
+               t.tenant_id, t.phone, t.cccd, t.hometown
         FROM Users u
-        JOIN Tenants t ON u.user_id = t.user_id
+                 JOIN Tenants t ON u.user_id = t.user_id
         WHERE u.user_id = ?
     `;
     db.query(sql, [req.params.userId], (err, result) => {
@@ -822,6 +1009,24 @@ app.put('/api/tenant/profile/:userId', (req, res) => {
     });
 });
 
+// Upload/cập nhật avatar khách thuê — xóa avatar cũ trước khi lưu cái mới
+app.post('/api/tenant/profile/:userId/avatar', uploadAvatar.single('avatar'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "Vui lòng chọn ảnh!" });
+    const userId = req.params.userId;
+    const newPath = `/uploads/avatars/${req.file.filename}`;
+
+    db.query("SELECT avatar_path FROM Users WHERE user_id = ?", [userId], (err, result) => {
+        if (err) return res.status(500).json({ error: "Lỗi truy vấn!" });
+        const oldPath = result[0]?.avatar_path;
+
+        db.query("UPDATE Users SET avatar_path = ? WHERE user_id = ?", [newPath, userId], (updateErr) => {
+            if (updateErr) return res.status(500).json({ error: "Lỗi lưu avatar!" });
+            if (oldPath) fs.unlink(path.join(__dirname, oldPath), () => {});
+            return res.json({ message: "Cập nhật ảnh đại diện thành công!", avatar_path: newPath });
+        });
+    });
+});
+
 // ============================================================
 // 11. BOOKING — ĐẶT PHÒNG CÓ DUYỆT (PENDING → APPROVED/REJECTED)
 // ============================================================
@@ -829,7 +1034,7 @@ app.put('/api/tenant/profile/:userId', (req, res) => {
 // Khách gửi yêu cầu đặt phòng.
 // Guard 1: chỉ được có 1 PENDING tại 1 thời điểm.
 // Guard 2: phòng phải AVAILABLE khi gửi.
-app.post('/api/tenant/booking-request', (req, res) => {
+app.post('/api/tenant/booking-request', verifyRole(['TENANT']), (req, res) => {
     const { tenant_id, room_id, move_in_date, num_people, note } = req.body;
     if (!tenant_id || !room_id || !move_in_date || !num_people) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc!' });
@@ -871,7 +1076,7 @@ app.get('/api/tenant/booking-status/:tenantId', (req, res) => {
 });
 
 // Admin lấy toàn bộ danh sách booking, PENDING hiển thị trước.
-app.get('/api/admin/bookings', (req, res) => {
+app.get('/api/admin/bookings', verifyRole(['ADMIN']), (req, res) => {
     const sql = `SELECT b.booking_id, b.status, b.move_in_date, b.num_people,
                b.note, b.reject_reason, b.created_at,
                r.room_number, r.room_type, r.base_price, u.full_name, t.phone
@@ -888,9 +1093,10 @@ app.get('/api/admin/bookings', (req, res) => {
 
 // Admin duyệt booking: tạo Contract ACTIVE + Room OCCUPIED + booking APPROVED.
 // Kiểm tra race condition phòng bị lấy mất trước khi duyệt.
-app.put('/api/admin/bookings/:id/approve', (req, res) => {
-    // deposit_amount do Admin nhập khi duyệt, mặc định 0 nếu không truyền
+app.put('/api/admin/bookings/:id/approve', verifyRole(['ADMIN']), (req, res) => {
+    // deposit_amount và end_date do Admin nhập khi duyệt
     const deposit_amount = req.body.deposit_amount || 0;
+    const end_date = req.body.end_date || null;
 
     db.query("SELECT * FROM bookings WHERE booking_id = ? AND status = 'PENDING'", [req.params.id], (err, rows) => {
         if (err) return res.status(500).json({ error: 'Lỗi hệ thống!' });
@@ -901,8 +1107,8 @@ app.put('/api/admin/bookings/:id/approve', (req, res) => {
             if (roomRows.length === 0) return res.status(400).json({ error: 'Phòng không còn trống, không thể duyệt!' });
             const today = new Date().toISOString().split('T')[0];
             db.query(
-                "INSERT INTO Contracts (room_id, tenant_id, start_date, deposit_amount, status) VALUES (?, ?, ?, ?, 'ACTIVE')",
-                [booking.room_id, booking.tenant_id, today, deposit_amount],
+                "INSERT INTO Contracts (room_id, tenant_id, start_date, end_date, deposit_amount, status) VALUES (?, ?, ?, ?, ?, 'ACTIVE')",
+                [booking.room_id, booking.tenant_id, today, end_date, deposit_amount],
                 (err3, contractResult) => {
                     if (err3) return res.status(500).json({ error: 'Lỗi tạo hợp đồng!' });
                     db.query("UPDATE Rooms SET status = 'OCCUPIED' WHERE room_id = ?", [booking.room_id], (err4) => {
@@ -919,7 +1125,7 @@ app.put('/api/admin/bookings/:id/approve', (req, res) => {
 });
 
 // Admin từ chối booking kèm lý do để khách xem được.
-app.put('/api/admin/bookings/:id/reject', (req, res) => {
+app.put('/api/admin/bookings/:id/reject', verifyRole(['ADMIN']), (req, res) => {
     const { reject_reason } = req.body;
     if (!reject_reason) return res.status(400).json({ error: 'Vui lòng nhập lý do!' });
     db.query(

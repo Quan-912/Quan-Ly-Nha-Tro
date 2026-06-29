@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from "axios";
 import { Layout, Menu, Typography, Modal } from 'antd';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { HomeOutlined, FileTextOutlined, UserOutlined, LogoutOutlined } from '@ant-design/icons';
@@ -22,6 +23,8 @@ const TenantLayout = () => {
             okButtonProps: { danger: true },
             onOk() {
                 localStorage.removeItem('user');
+                delete axios.defaults.headers.common['x-user-id'];
+                delete axios.defaults.headers.common['x-user-role'];
                 navigate('/login');
             },
         });
@@ -47,7 +50,7 @@ const TenantLayout = () => {
                 padding: '0 20px', boxShadow: '0 2px 8px #f0f1f2', zIndex: 1
             }}>
                 <Title level={4} style={{ margin: 0, color: '#1890ff', marginRight: 40 }}>
-                    TRỌ SMART
+                    SMART HOUSE
                 </Title>
                 <Menu
                     mode="horizontal"

@@ -21,14 +21,16 @@ const Login = () => {
             const res = await axios.post('http://localhost:5000/api/login', values);
             message.success(res.data.message);
 
-            // Lưu thông tin người dùng vào localStorage để các trang khác sử dụng
             localStorage.setItem('user', JSON.stringify(res.data.user));
 
-            // BƯỚC ĐIỀU HƯỚNG QUAN TRỌNG: Kiểm tra quyền (Role)
+            // Gắn header xác thực cho mọi request axios kể từ đây
+            axios.defaults.headers.common['x-user-id'] = res.data.user.id;
+            axios.defaults.headers.common['x-user-role'] = res.data.user.role;
+
             if (res.data.user.role === 'ADMIN') {
-                navigate('/admin'); // Vào trang quản lý của Admin
+                navigate('/admin');
             } else if (res.data.user.role === 'TENANT') {
-                navigate('/tenant'); // Vào trang của Khách thuê
+                navigate('/tenant');
             }
         } catch (error) {
             if (error.response) {

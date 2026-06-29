@@ -19,6 +19,7 @@ import Services from './pages/Services';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ChangePassword from './pages/ChangePassword';
+import axios from 'axios';
 
 const ProtectedRoute = ({ children, allowedRole }) => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -27,6 +28,11 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     return children;
 };
 
+const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+if (storedUser) {
+    axios.defaults.headers.common['x-user-id'] = storedUser.id;
+    axios.defaults.headers.common['x-user-role'] = storedUser.role;
+}
 function App() {
     return (
         <BrowserRouter>

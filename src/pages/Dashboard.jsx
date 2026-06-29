@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Col, Row, Statistic, Typography, List, Badge, Spin, Alert } from 'antd';
 import { HomeOutlined, UserOutlined, DollarOutlined, BellOutlined, WarningOutlined } from '@ant-design/icons';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, Legend
+} from 'recharts';
 import axios from 'axios';
 
 const { Title, Text } = Typography;
+
+const ROOM_STATUS_COLORS = ['#52c41a', '#ff7875'];
 
 const Dashboard = () => {
     const [stats, setStats] = useState(null);
@@ -21,6 +26,11 @@ const Dashboard = () => {
 
     if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>;
 
+    const roomStatusData = [
+        { name: 'Còn trống', value: stats.rooms.available_rooms || 0 },
+        { name: 'Đã cho thuê', value: stats.rooms.occupied_rooms || 0 }
+    ];
+
     return (
         <div style={{ padding: '0px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -28,7 +38,6 @@ const Dashboard = () => {
                 <Text type="secondary" style={{ fontSize: '14px' }}>Hệ thống quản lý thời gian thực</Text>
             </div>
 
-            {/* Cảnh báo nổi bật nếu có hóa đơn chưa thu */}
             {stats.unpaid_count > 0 && (
                 <Alert
                     message={
@@ -44,7 +53,6 @@ const Dashboard = () => {
                 />
             )}
 
-            {/* Thẻ thống kê nhanh — 5 thẻ, hàng đầu */}
             <Row gutter={16} style={{ marginBottom: 24 }}>
                 <Col span={5}>
                     <Card bordered={false} style={{ background: '#e6f7ff' }}>
@@ -85,7 +93,6 @@ const Dashboard = () => {
                         />
                     </Card>
                 </Col>
-                {/* Thẻ hóa đơn chưa thu — nổi bật màu đỏ nhạt */}
                 <Col span={5}>
                     <Card bordered={false} style={{ background: '#fff1f0', border: stats.unpaid_count > 0 ? '1px solid #ffa39e' : 'none' }}>
                         <Statistic
@@ -104,14 +111,14 @@ const Dashboard = () => {
                 </Col>
             </Row>
 
-            <Row gutter={16}>
+            <Row gutter={16} style={{ marginBottom: 16 }}>
                 {/* Biểu đồ doanh thu */}
-                <Col span={15}>
+                <Col span={10}>
                     <Card
                         title={<Text strong style={{ fontSize: '16px' }}>Biểu đồ doanh thu theo tháng hóa đơn (VND)</Text>}
                         bordered={false}
                     >
-                        <div style={{ width: '100%', height: 300 }}>
+                        <div style={{ width: '100%', height: 280 }}>
                             <ResponsiveContainer>
                                 <BarChart data={stats.chartData}>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -125,7 +132,38 @@ const Dashboard = () => {
                     </Card>
                 </Col>
 
-                {/* Bản tin vận hành — hiển thị động theo dữ liệu thực */}
+                {/* Biểu đồ tròn tỉ lệ phòng trống/đã thuê */}
+                <Col span={5}>
+                    <Card
+                        title={<Text strong style={{ fontSize: '16px' }}>Tỉ lệ tình trạng phòng</Text>}
+                        bordered={false}
+                        style={{ height: '100%' }}
+                    >
+                        <div style={{ width: '100%', height: 230 }}>
+                            <ResponsiveContainer>
+                                <PieChart>
+                                    <Pie
+                                        data={roomStatusData}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={75}
+                                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                                    >
+                                        {roomStatusData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={ROOM_STATUS_COLORS[index % ROOM_STATUS_COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value, name) => [`${value} phòng`, name]} />
+                                    <Legend verticalAlign="bottom" height={36} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
+                </Col>
+
+                {/* Bản tin vận hành */}
                 <Col span={9}>
                     <Card
                         title={<Text strong style={{ fontSize: '16px' }}><BellOutlined /> Bản tin vận hành nhanh</Text>}

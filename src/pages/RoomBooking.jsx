@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
     Card, Row, Col, Tag, Button, Modal, Form, DatePicker,
     InputNumber, Input, Typography, Spin, Empty, message,
-    Badge, Descriptions, Result, Alert
+    Badge, Descriptions, Result, Alert, Select, Space
 } from 'antd';
 import {
     HomeOutlined, CalendarOutlined, AppstoreOutlined,
     TeamOutlined, FileTextOutlined, ClockCircleOutlined,
-    ExpandOutlined, ApartmentOutlined
+    ExpandOutlined, ApartmentOutlined, SearchOutlined, FilterOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -25,12 +25,23 @@ const RoomBooking = () => {
     const [form] = Form.useForm();
     const navigate = useNavigate();
 
+    // State cho tìm kiếm và lọc phòng
+    const [searchNumber, setSearchNumber] = useState('');
+    const [priceRange, setPriceRange] = useState({ min: null, max: null });
+    const [filterType, setFilterType] = useState(null);
+
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-    const fetchData = async () => {
+    const fetchData = async (filters = {}) => {
         setLoading(true);
         try {
-            const resRooms = await axios.get('http://localhost:5000/api/tenant/available-rooms');
+            const params = {};
+            if (filters.room_number) params.room_number = filters.room_number;
+            if (filters.min_price) params.min_price = filters.min_price;
+            if (filters.max_price) params.max_price = filters.max_price;
+            if (filters.room_type) params.room_type = filters.room_type;
+
+            const resRooms = await axios.get('http://localhost:5000/api/tenant/available-rooms', { params });
             setRooms(resRooms.data);
         } catch (err) {
             message.error('Không thể tải danh sách phòng!');
@@ -47,6 +58,23 @@ const RoomBooking = () => {
     };
 
     useEffect(() => { fetchData(); }, []);
+
+    // Áp dụng tìm kiếm/lọc — gọi lại API mỗi khi người dùng bấm "Tìm kiếm"
+    const handleApplyFilters = () => {
+        fetchData({
+            room_number: searchNumber,
+            min_price: priceRange.min,
+            max_price: priceRange.max,
+            room_type: filterType
+        });
+    };
+
+    const handleResetFilters = () => {
+        setSearchNumber('');
+        setPriceRange({ min: null, max: null });
+        setFilterType(null);
+        fetchData({});
+    };
 
     const handleSelectRoom = (room) => {
         setSelectedRoom(room);
@@ -130,76 +158,146 @@ const RoomBooking = () => {
         </div>
     );
 
+    function renderSearchBar() {
+        return (
+            <Card
+                size="small"
+                style={{ marginBottom: 20, borderRadius: 10, background: '#fafafa' }}
+                bodyStyle={{ padding: '14px 16px' }}
+            >
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} sm={6}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Số phòng</Text>
+                        <Input
+                            placeholder="Ví dụ: 101"
+                            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                            value={searchNumber}
+                            onChange={(e) => setSearchNumber(e.target.value)}
+                            allowClear
+                        />
+                    </Col>
+                    <Col xs={12} sm={4}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Giá từ</Text>
+                        <InputNumber
+                            style={{ width: '100%' }}
+                            placeholder="0"
+                            min={0}
+                            value={priceRange.min}
+                            onChange={(v) => setPriceRange(prev => ({ ...prev, min: v }))}
+                            formatter={(v) => v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
+                        />
+                    </Col>
+                    <Col xs={12} sm={4}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Đến</Text>
+                        <InputNumber
+                            style={{ width: '100%' }}
+                            placeholder="Không giới hạn"
+                            min={0}
+                            value={priceRange.max}
+                            onChange={(v) => setPriceRange(prev => ({ ...prev, max: v }))}
+                            formatter={(v) => v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
+                        />
+                    </Col>
+                    <Col xs={12} sm={5}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Loại phòng</Text>
+                        <Select
+                            style={{ width: '100%' }}
+                            placeholder="Tất cả loại phòng"
+                            value={filterType}
+                            onChange={setFilterType}
+                            allowClear
+                        >
+                            <Select.Option value="Phòng đơn">Phòng đơn</Select.Option>
+                            <Select.Option value="Phòng đôi">Phòng đôi</Select.Option>
+                            <Select.Option value="Chung cư mini">Chung cư mini</Select.Option>
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={5}>
+                        <Space>
+                            <Button type="primary" icon={<FilterOutlined />} onClick={handleApplyFilters}>
+                                Tìm kiếm
+                            </Button>
+                            <Button onClick={handleResetFilters}>Xóa lọc</Button>
+                        </Space>
+                    </Col>
+                </Row>
+            </Card>
+        );
+    }
+
     function renderRoomList() {
-        if (rooms.length === 0) {
-            return <Empty description={<Text>Hiện không có phòng trống. Vui lòng quay lại sau.</Text>} style={{ padding: '60px 0' }} />;
-        }
         return (
             <>
-                <Row gutter={[20, 20]}>
-                    {rooms.map(room => (
-                        <Col xs={24} sm={12} md={8} key={room.room_id}>
-                            <Card
-                                hoverable
-                                style={{ borderRadius: 12, border: '1px solid #e8f4ff', boxShadow: '0 2px 12px rgba(24,144,255,0.08)' }}
-                                actions={[
-                                    <Button
-                                        type="primary"
-                                        icon={<HomeOutlined />}
-                                        onClick={() => handleSelectRoom(room)}
-                                        style={{ margin: '0 16px', width: 'calc(100% - 32px)' }}
-                                    >
-                                        Đặt phòng này
-                                    </Button>
-                                ]}
-                            >
-                                <div style={{ marginBottom: 8 }}>
-                                    <Badge status="success" text={<Text style={{ color: '#52c41a', fontWeight: 600 }}>Còn trống</Text>} />
-                                </div>
-                                <div style={{ textAlign: 'center', marginBottom: 14 }}>
-                                    <div style={{
-                                        width: 56, height: 56, borderRadius: '50%',
-                                        background: 'linear-gradient(135deg, #1890ff, #096dd9)',
-                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8
-                                    }}>
-                                        <HomeOutlined style={{ fontSize: 24, color: '#fff' }} />
-                                    </div>
-                                    <Title level={3} style={{ margin: 0, color: '#1890ff' }}>Phòng {room.room_number}</Title>
-                                </div>
+                {renderSearchBar()}
 
-                                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                        <Text type="secondary">Loại phòng</Text>
-                                        <Tag color="blue">{room.room_type}</Tag>
+                {rooms.length === 0 ? (
+                    <Empty description={<Text>Không tìm thấy phòng phù hợp với tiêu chí lọc. Vui lòng thử lại với điều kiện khác.</Text>} style={{ padding: '60px 0' }} />
+                ) : (
+                    <Row gutter={[20, 20]}>
+                        {rooms.map(room => (
+                            <Col xs={24} sm={12} md={8} key={room.room_id}>
+                                <Card
+                                    hoverable
+                                    style={{ borderRadius: 12, border: '1px solid #e8f4ff', boxShadow: '0 2px 12px rgba(24,144,255,0.08)' }}
+                                    actions={[
+                                        <Button
+                                            type="primary"
+                                            icon={<HomeOutlined />}
+                                            onClick={() => handleSelectRoom(room)}
+                                            style={{ margin: '0 16px', width: 'calc(100% - 32px)' }}
+                                        >
+                                            Đặt phòng này
+                                        </Button>
+                                    ]}
+                                >
+                                    <div style={{ marginBottom: 8 }}>
+                                        <Badge status="success" text={<Text style={{ color: '#52c41a', fontWeight: 600 }}>Còn trống</Text>} />
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                        <Text type="secondary">Giá thuê / tháng</Text>
-                                        <Text strong style={{ color: '#d4380d', fontSize: 15 }}>
-                                            {parseInt(room.base_price).toLocaleString('vi-VN')} đ
-                                        </Text>
+                                    <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                                        <div style={{
+                                            width: 56, height: 56, borderRadius: '50%',
+                                            background: 'linear-gradient(135deg, #1890ff, #096dd9)',
+                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8
+                                        }}>
+                                            <HomeOutlined style={{ fontSize: 24, color: '#fff' }} />
+                                        </div>
+                                        <Title level={3} style={{ margin: 0, color: '#1890ff' }}>Phòng {room.room_number}</Title>
                                     </div>
-                                    {room.area && (
+
+                                    <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                            <Text type="secondary"><ExpandOutlined /> Diện tích</Text>
-                                            <Text>{room.area} m²</Text>
+                                            <Text type="secondary">Loại phòng</Text>
+                                            <Tag color="blue">{room.room_type}</Tag>
                                         </div>
-                                    )}
-                                    {room.floor && (
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                            <Text type="secondary"><ApartmentOutlined /> Tầng</Text>
-                                            <Text>Tầng {room.floor}</Text>
+                                            <Text type="secondary">Giá thuê / tháng</Text>
+                                            <Text strong style={{ color: '#d4380d', fontSize: 15 }}>
+                                                {parseInt(room.base_price).toLocaleString('vi-VN')} đ
+                                            </Text>
                                         </div>
-                                    )}
-                                    {room.description && (
-                                        <div style={{ marginTop: 8, padding: '6px 8px', background: '#f6ffed', borderRadius: 4 }}>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>🛋 {room.description}</Text>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-                        </Col>
-                    ))}
-                </Row>
+                                        {room.area && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                <Text type="secondary"><ExpandOutlined /> Diện tích</Text>
+                                                <Text>{room.area} m²</Text>
+                                            </div>
+                                        )}
+                                        {room.floor && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                <Text type="secondary"><ApartmentOutlined /> Tầng</Text>
+                                                <Text>Tầng {room.floor}</Text>
+                                            </div>
+                                        )}
+                                        {room.description && (
+                                            <div style={{ marginTop: 8, padding: '6px 8px', background: '#f6ffed', borderRadius: 4 }}>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>🛋 {room.description}</Text>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                )}
 
                 {/* Modal xác nhận đặt phòng */}
                 <Modal

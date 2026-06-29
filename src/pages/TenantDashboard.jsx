@@ -28,6 +28,7 @@ const TenantDashboard = () => {
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [invoiceDetails, setInvoiceDetails] = useState([]);
     const [detailLoading, setDetailLoading] = useState(false);
+    const [roomRent, setRoomRent] = useState(0);
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -91,7 +92,8 @@ const TenantDashboard = () => {
         setDetailLoading(true);
         try {
             const res = await axios.get(`http://localhost:5000/api/invoices/${invoice.invoice_id}/details`);
-            setInvoiceDetails(res.data);
+            setInvoiceDetails(res.data.details);
+            setRoomRent(res.data.room_rent || 0);
         } catch (err) {
             message.error("Không thể tải chi tiết hóa đơn!");
         } finally {
@@ -269,6 +271,13 @@ const TenantDashboard = () => {
             >
                 {detailLoading ? <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div> : (
                     <>
+                        <div style={{
+                            display: 'flex', justifyContent: 'space-between', padding: '10px 12px',
+                            background: '#f0f5ff', borderRadius: 6, marginBottom: 12
+                        }}>
+                            <Text strong>Tiền phòng cố định</Text>
+                            <Text strong style={{ color: '#1890ff' }}>{parseInt(roomRent).toLocaleString()} đ</Text>
+                        </div>
                         <Table
                             dataSource={invoiceDetails} rowKey="detail_id" size="middle" pagination={false} bordered
                             columns={[

@@ -7,7 +7,7 @@ import {
     AlertOutlined, SafetyCertificateOutlined,
     AuditOutlined, LogoutOutlined
 } from '@ant-design/icons';
-
+import axios from "axios";
 const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
 
@@ -21,7 +21,11 @@ const AdminLayout = () => {
             content: 'Bạn có chắc chắn muốn thoát khỏi hệ thống không?',
             okText: 'Đăng xuất', cancelText: 'Hủy',
             okButtonProps: { danger: true },
-            onOk() { localStorage.removeItem('user'); navigate('/login'); },
+            onOk() { localStorage.removeItem('user');
+                delete axios.defaults.headers.common['x-user-id'];
+                delete axios.defaults.headers.common['x-user-role'];
+                navigate('/login');
+                },
         });
     };
 
@@ -47,7 +51,7 @@ const AdminLayout = () => {
         <Layout style={{ minHeight: '100vh' }}>
             <Sider theme="dark" style={{ overflow: 'auto', height: '100vh', position: 'sticky', left: 0, top: 0, bottom: 0 }}>
                 <div style={{ height: 64, margin: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Title level={4} style={{ color: 'white', margin: 0 }}>QUẢN LÝ NHÀ TRỌ</Title>
+                    <Title level={4} style={{ color: 'white', margin: 0 }}>SMART HOUSE</Title>
                 </div>
                 <Menu theme="dark" selectedKeys={[location.pathname]} mode="inline" items={menuItems} />
             </Sider>

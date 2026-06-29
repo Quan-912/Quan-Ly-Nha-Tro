@@ -3,8 +3,9 @@ import {
     Table, Button, Modal, Form, Select, DatePicker, InputNumber,
     message, Tag, Typography, Popconfirm, Badge, Row, Col, Space
 } from 'antd';
-import { FileDoneOutlined, DeleteOutlined, StopOutlined } from '@ant-design/icons';
+import { FileDoneOutlined, DeleteOutlined, StopOutlined, FieldTimeOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import dayjs from 'dayjs';
 
 const { Text, Title } = Typography;
 
@@ -14,6 +15,11 @@ const Contracts = () => {
     const [tenants, setTenants] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
+
+    // Modal gia hạn hợp đồng
+    const [extendModal, setExtendModal] = useState({ open: false, contract: null });
+    const [extendForm] = Form.useForm();
+    const [extending, setExtending] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -59,16 +65,34 @@ const Contracts = () => {
     };
 
     /**
-     * Thanh lý hợp đồng: gọi PUT /terminate → server đổi ACTIVE → EXPIRED
-     * và trả phòng về AVAILABLE, ghi ngày kết thúc thực tế hôm nay.
+     * Thanh lý hợp đồng: gọi PUT /terminate → server đổi ACTIVE → EXPIRED,
+     * trả phòng về AVAILABLE, tự động hoàn cọc và trả về số tiền đã hoàn.
      */
     const handleTerminate = async (contractKey) => {
         try {
-            await axios.put(`http://localhost:5000/api/contracts/${contractKey}/terminate`);
-            message.success("Đã thanh lý hợp đồng! Phòng đã được giải phóng.");
+            const res = await axios.put(`http://localhost:5000/api/contracts/${contractKey}/terminate`);
+            message.success(res.data.message);
             fetchData();
         } catch (error) {
             message.error(error.response?.data?.error || "Lỗi khi thanh lý hợp đồng!");
+        }
+    };
+
+    const handleExtendSubmit = async (values) => {
+        setExtending(true);
+        try {
+            const id = extendModal.contract.key || extendModal.contract.contract_id;
+            await axios.put(`http://localhost:5000/api/contracts/${id}/extend`, {
+                new_end_date: values.new_end_date.format('YYYY-MM-DD')
+            });
+            message.success('Đã gia hạn hợp đồng thành công!');
+            setExtendModal({ open: false, contract: null });
+            extendForm.resetFields();
+            fetchData();
+        } catch (error) {
+            message.error(error.response?.data?.error || "Lỗi khi gia hạn hợp đồng!");
+        } finally {
+            setExtending(false);
         }
     };
 
@@ -93,18 +117,25 @@ const Contracts = () => {
         {
             title: 'Thời hạn',
             key: 'duration',
-            render: (_, record) => (
-                <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
-                    <div>
-                        <Text type="secondary">Từ:</Text>{' '}
-                        <Text strong>{record.start_date ? new Date(record.start_date).toLocaleDateString('vi-VN') : '—'}</Text>
+            render: (_, record) => {
+                const isExpiringSoon = record.status === 'ACTIVE' && record.end_date &&
+                    dayjs(record.end_date).diff(dayjs(), 'day') <= 7 && dayjs(record.end_date).diff(dayjs(), 'day') >= 0;
+                return (
+                    <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+                        <div>
+                            <Text type="secondary">Từ:</Text>{' '}
+                            <Text strong>{record.start_date ? new Date(record.start_date).toLocaleDateString('vi-VN') : '—'}</Text>
+                        </div>
+                        <div>
+                            <Text type="secondary">Đến:</Text>{' '}
+                            <Text strong>{record.end_date ? new Date(record.end_date).toLocaleDateString('vi-VN') : 'Dài hạn'}</Text>
+                            {isExpiringSoon && (
+                                <Tag color="orange" style={{ marginLeft: 6, fontSize: 11 }}>Sắp hết hạn</Tag>
+                            )}
+                        </div>
                     </div>
-                    <div>
-                        <Text type="secondary">Đến:</Text>{' '}
-                        <Text strong>{record.end_date ? new Date(record.end_date).toLocaleDateString('vi-VN') : 'Dài hạn'}</Text>
-                    </div>
-                </div>
-            )
+                );
+            }
         },
         {
             title: 'Tiền cọc',
@@ -133,16 +164,32 @@ const Contracts = () => {
             title: 'Thao tác',
             key: 'action',
             align: 'center',
-            width: 120,
+            width: 150,
             render: (_, record) => {
                 const id = record.key || record.contract_id;
                 return (
                     <Space size="small">
+                        {/* Nút Gia hạn — chỉ hiện khi hợp đồng đang ACTIVE */}
+                        {record.status === 'ACTIVE' && (
+                            <Button
+                                type="text"
+                                size="middle"
+                                icon={<FieldTimeOutlined style={{ color: '#1890ff', fontSize: '18px' }} />}
+                                title="Gia hạn hợp đồng"
+                                onClick={() => {
+                                    setExtendModal({ open: true, contract: record });
+                                    extendForm.setFieldsValue({
+                                        new_end_date: record.end_date ? dayjs(record.end_date) : null
+                                    });
+                                }}
+                            />
+                        )}
+
                         {/* Nút Thanh lý — chỉ hiện khi hợp đồng đang ACTIVE */}
                         {record.status === 'ACTIVE' && (
                             <Popconfirm
                                 title="Xác nhận thanh lý hợp đồng?"
-                                description="Phòng sẽ được giải phóng và trở về trạng thái trống."
+                                description="Phòng sẽ được giải phóng, tiền cọc sẽ được hoàn trả tự động."
                                 onConfirm={() => handleTerminate(id)}
                                 okText="Thanh lý"
                                 cancelText="Hủy"
@@ -257,6 +304,34 @@ const Contracts = () => {
                         />
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            {/* Modal gia hạn hợp đồng */}
+            <Modal
+                title={<Text strong style={{ fontSize: '18px' }}>Gia hạn hợp đồng</Text>}
+                open={extendModal.open}
+                onOk={() => extendForm.submit()}
+                onCancel={() => { setExtendModal({ open: false, contract: null }); extendForm.resetFields(); }}
+                okText="Xác nhận gia hạn"
+                cancelText="Hủy"
+                confirmLoading={extending}
+            >
+                {extendModal.contract && (
+                    <>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                            Phòng <b>{extendModal.contract.room_number}</b> — Khách thuê <b>{extendModal.contract.full_name}</b>
+                        </Text>
+                        <Form form={extendForm} layout="vertical" onFinish={handleExtendSubmit} size="large">
+                            <Form.Item
+                                name="new_end_date"
+                                label={<Text strong>Ngày hết hạn mới</Text>}
+                                rules={[{ required: true, message: 'Vui lòng chọn ngày hết hạn mới!' }]}
+                            >
+                                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                            </Form.Item>
+                        </Form>
+                    </>
+                )}
             </Modal>
         </div>
     );

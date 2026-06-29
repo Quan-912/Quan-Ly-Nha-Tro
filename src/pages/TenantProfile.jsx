@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
     Card, Form, Input, Button, Typography, message,
-    Tabs, Spin, Avatar, Divider, Result
+    Tabs, Spin, Avatar, Divider, Result, Upload
 } from 'antd';
 import {
     UserOutlined, PhoneOutlined, IdcardOutlined,
     HomeOutlined, SaveOutlined, LockOutlined,
-    SafetyCertificateOutlined, CheckCircleOutlined
+    SafetyCertificateOutlined, CheckCircleOutlined, EditOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -19,6 +19,10 @@ const TenantProfile = () => {
     const [savingProfile, setSavingProfile] = useState(false);
     const [savingPassword, setSavingPassword] = useState(false);
     const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+    // State cho avatar
+    const [avatarUrl, setAvatarUrl] = useState(null);
+    const [avatarUploading, setAvatarUploading] = useState(false);
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -34,6 +38,7 @@ const TenantProfile = () => {
                     cccd:      res.data.cccd,
                     hometown:  res.data.hometown,
                 });
+                setAvatarUrl(res.data.avatar_path || null);
             } catch (err) {
                 message.error('Không thể tải thông tin hồ sơ!');
             } finally {
@@ -81,6 +86,39 @@ const TenantProfile = () => {
             message.error(err.response?.data?.error || 'Lỗi hệ thống!');
         } finally {
             setSavingPassword(false);
+        }
+    };
+
+    // Đổi/cập nhật ảnh đại diện — gửi ngay khi chọn file, không cần bấm Lưu riêng
+    const handleAvatarChange = async (info) => {
+        const file = info.file;
+        if (!file) return;
+
+        // Kiểm tra dung lượng và định dạng trước khi gửi lên server
+        if (!file.type?.startsWith('image/')) {
+            message.error('Chỉ chấp nhận file ảnh!');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            message.error('Ảnh không được vượt quá 5MB!');
+            return;
+        }
+
+        setAvatarUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('avatar', file);
+            const res = await axios.post(
+                `http://localhost:5000/api/tenant/profile/${user.id}/avatar`,
+                formData,
+                { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+            setAvatarUrl(res.data.avatar_path);
+            message.success('Cập nhật ảnh đại diện thành công!');
+        } catch (err) {
+            message.error(err.response?.data?.error || 'Lỗi tải ảnh lên!');
+        } finally {
+            setAvatarUploading(false);
         }
     };
 
@@ -221,14 +259,35 @@ const TenantProfile = () => {
                 bordered={false}
                 style={{ borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
             >
-                {/* Avatar + tên hiển thị */}
+                {/* Avatar + tên hiển thị — bấm vào avatar để đổi ảnh */}
                 <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                    <Avatar
-                        size={72}
-                        icon={<UserOutlined />}
-                        style={{ backgroundColor: '#1890ff', marginBottom: 12 }}
-                    />
-                    <Title level={4} style={{ margin: 0 }}>{user.full_name}</Title>
+                    <Upload
+                        showUploadList={false}
+                        beforeUpload={() => false}
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        disabled={avatarUploading}
+                    >
+                        <div style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}>
+                            <Avatar
+                                size={72}
+                                src={avatarUrl ? `http://localhost:5000${avatarUrl}` : undefined}
+                                icon={!avatarUrl && <UserOutlined />}
+                                style={{ backgroundColor: '#1890ff', marginBottom: 12 }}
+                            />
+                            <div style={{
+                                position: 'absolute', bottom: 8, right: -4, background: '#1890ff',
+                                borderRadius: '50%', width: 24, height: 24, display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', border: '2px solid #fff'
+                            }}>
+                                <EditOutlined style={{ color: '#fff', fontSize: 12 }} />
+                            </div>
+                        </div>
+                    </Upload>
+                    {avatarUploading && (
+                        <div><Text type="secondary" style={{ fontSize: 13 }}>Đang tải ảnh lên...</Text></div>
+                    )}
+                    <Title level={4} style={{ margin: '8px 0 0' }}>{user.full_name}</Title>
                     <Text type="secondary">@{user.username}</Text>
                 </div>
 

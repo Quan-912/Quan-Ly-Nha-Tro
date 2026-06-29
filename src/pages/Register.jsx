@@ -16,7 +16,19 @@ const Register = () => {
             message.success('Đăng ký tài khoản thành công!');
             navigate('/login'); // Đăng ký xong thì chuyển về trang Login
         } catch (error) {
-            message.error('Đăng ký thất bại: ' + (error.response?.data || 'Lỗi hệ thống'));
+            message.error('Đăng ký thất bại: ' + (error.response?.data?.error || error.response?.data || 'Lỗi hệ thống'));
+        }
+    };
+
+    // Kiểm tra email đã tồn tại trong hệ thống chưa — gọi API ngay khi người dùng rời khỏi ô nhập (onBlur)
+    const validateEmailExists = async (_, value) => {
+        if (!value) return Promise.resolve();
+        try {
+            const res = await axios.get('http://localhost:5000/api/check-email', { params: { email: value } });
+            if (res.data.exists) return Promise.reject(new Error('Email này đã được sử dụng cho tài khoản khác!'));
+            return Promise.resolve();
+        } catch (err) {
+            return Promise.resolve(); // Nếu API lỗi, không chặn người dùng — backend sẽ kiểm tra lại lần cuối
         }
     };
 
@@ -33,21 +45,34 @@ const Register = () => {
                         <Input prefix={<UserOutlined />} placeholder="Tên đăng nhập" />
                     </Form.Item>
 
-                    <Form.Item name="password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }]}>
-                        <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" />
+                    <Form.Item
+                        name="password"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập mật khẩu!' },
+                            {
+                                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
+                                message: 'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số!'
+                            }
+                        ]}
+                        hasFeedback
+                    >
+                        <Input.Password prefix={<LockOutlined />} placeholder="Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số" />
                     </Form.Item>
 
                     <Form.Item name="full_name" rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}>
                         <Input prefix={<UserOutlined />} placeholder="Họ và tên" />
                     </Form.Item>
 
-                    {/* Email — dùng để khôi phục mật khẩu sau này nên bắt buộc và validate đúng định dạng */}
+                    {/* Email — bắt buộc, validate đúng định dạng VÀ chưa từng tồn tại trong hệ thống */}
                     <Form.Item
                         name="email"
                         rules={[
                             { required: true, message: 'Vui lòng nhập email!' },
-                            { type: 'email', message: 'Email không đúng định dạng!' }
+                            { type: 'email', message: 'Email không đúng định dạng!' },
+                            { validator: validateEmailExists }
                         ]}
+                        validateTrigger={['onBlur']}
+                        hasFeedback
                     >
                         <Input prefix={<MailOutlined />} placeholder="Email (dùng để khôi phục mật khẩu)" />
                     </Form.Item>

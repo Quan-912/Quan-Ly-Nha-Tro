@@ -102,11 +102,10 @@ const Invoices = () => {
     const handleExportPDF = async (record) => {
         try {
             const res = await axios.get(`http://localhost:5000/api/invoices/${record.key || record.invoice_id}/details`);
-            const details = res.data;
+            const { room_rent, details } = res.data;
 
             const doc = new jsPDF();
 
-            // Hàm loại bỏ dấu tiếng Việt vì jsPDF font mặc định không hỗ trợ Unicode
             const removeAccents = (str) => str
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
@@ -114,7 +113,6 @@ const Invoices = () => {
 
             const pageW = doc.internal.pageSize.getWidth();
 
-            // --- Header ---
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
             doc.text('HOA DON TIEN PHONG', pageW / 2, 20, { align: 'center' });
@@ -129,11 +127,9 @@ const Invoices = () => {
                 14, 56
             );
 
-            // --- Đường kẻ ngang ---
             doc.setLineWidth(0.5);
             doc.line(14, 60, pageW - 14, 60);
 
-            // --- Tiêu đề bảng ---
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10);
             doc.text('Dich vu',       14,  70);
@@ -143,9 +139,17 @@ const Invoices = () => {
             doc.text('Thanh tien',   195,  70, { align: 'right' });
             doc.line(14, 73, pageW - 14, 73);
 
-            // --- Dữ liệu từng dòng ---
             doc.setFont('helvetica', 'normal');
             let y = 81;
+
+            // Dòng tiền phòng cố định — hiển thị trước các dịch vụ điện/nước
+            doc.text('Tien phong co dinh', 14, y);
+            doc.text('-', 80, y, { align: 'right' });
+            doc.text('-', 115, y, { align: 'right' });
+            doc.text('1 thang', 145, y, { align: 'right' });
+            doc.text(`${parseInt(room_rent).toLocaleString()} d`, 195, y, { align: 'right' });
+            y += 9;
+
             details.forEach(d => {
                 doc.text(removeAccents(d.service_name),  14,  y);
                 doc.text(String(d.old_index ?? 0),        80,  y, { align: 'right' });
@@ -155,7 +159,6 @@ const Invoices = () => {
                 y += 9;
             });
 
-            // --- Tổng cộng ---
             doc.line(14, y, pageW - 14, y);
             y += 8;
             doc.setFont('helvetica', 'bold');
@@ -163,7 +166,6 @@ const Invoices = () => {
             doc.text('TONG CONG:', 120, y);
             doc.text(`${parseInt(record.total_amount).toLocaleString()} d`, 195, y, { align: 'right' });
 
-            // --- Footer ---
             y += 16;
             doc.setFont('helvetica', 'italic');
             doc.setFontSize(9);
