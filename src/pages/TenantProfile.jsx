@@ -6,27 +6,28 @@ import {
 import {
     UserOutlined, PhoneOutlined, IdcardOutlined,
     HomeOutlined, SaveOutlined, LockOutlined,
-    SafetyCertificateOutlined, CheckCircleOutlined, EditOutlined
+    SafetyCertificateOutlined, CheckCircleOutlined,
+    EditOutlined, MailOutlined,
 } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Title, Text } = Typography;
 
 const TenantProfile = () => {
-    const [profileForm] = Form.useForm();
+    const [profileForm]  = Form.useForm();
     const [passwordForm] = Form.useForm();
-    const [loadingProfile, setLoadingProfile] = useState(true);
-    const [savingProfile, setSavingProfile] = useState(false);
-    const [savingPassword, setSavingPassword] = useState(false);
+
+    const [loadingProfile,  setLoadingProfile]  = useState(true);
+    const [savingProfile,   setSavingProfile]   = useState(false);
+    const [savingPassword,  setSavingPassword]  = useState(false);
     const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-    // State cho avatar
-    const [avatarUrl, setAvatarUrl] = useState(null);
+    const [avatarUrl,       setAvatarUrl]       = useState(null);
     const [avatarUploading, setAvatarUploading] = useState(false);
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-    // Tải thông tin hồ sơ khi mount
+    // Tải thông tin hồ sơ khi mount — bao gồm email
     useEffect(() => {
         const fetchProfile = async () => {
             try {
@@ -34,12 +35,13 @@ const TenantProfile = () => {
                 profileForm.setFieldsValue({
                     full_name: res.data.full_name,
                     username:  res.data.username,
+                    email:     res.data.email,       // ← field bổ sung
                     phone:     res.data.phone,
                     cccd:      res.data.cccd,
                     hometown:  res.data.hometown,
                 });
                 setAvatarUrl(res.data.avatar_path || null);
-            } catch (err) {
+            } catch {
                 message.error('Không thể tải thông tin hồ sơ!');
             } finally {
                 setLoadingProfile(false);
@@ -48,12 +50,13 @@ const TenantProfile = () => {
         fetchProfile();
     }, []);
 
-    // Lưu thông tin cá nhân
+    // Lưu thông tin cá nhân — gửi kèm email lên server
     const onSaveProfile = async (values) => {
         setSavingProfile(true);
         try {
             await axios.put(`http://localhost:5000/api/tenant/profile/${user.id}`, {
                 full_name: values.full_name,
+                email:     values.email,             // ← truyền email
                 phone:     values.phone,
                 cccd:      values.cccd,
                 hometown:  values.hometown,
@@ -71,7 +74,7 @@ const TenantProfile = () => {
         }
     };
 
-    // Đổi mật khẩu
+    // Đổi mật khẩu — xác minh mật khẩu cũ trước rồi mới hash mật khẩu mới
     const onChangePassword = async (values) => {
         setSavingPassword(true);
         try {
@@ -89,12 +92,14 @@ const TenantProfile = () => {
         }
     };
 
-    // Đổi/cập nhật ảnh đại diện — gửi ngay khi chọn file, không cần bấm Lưu riêng
+    /**
+     * Upload avatar — validate dung lượng/định dạng client-side trước
+     * rồi gửi multipart/form-data; server xóa ảnh cũ trước khi lưu ảnh mới.
+     */
     const handleAvatarChange = async (info) => {
         const file = info.file;
         if (!file) return;
 
-        // Kiểm tra dung lượng và định dạng trước khi gửi lên server
         if (!file.type?.startsWith('image/')) {
             message.error('Chỉ chấp nhận file ảnh!');
             return;
@@ -123,17 +128,26 @@ const TenantProfile = () => {
     };
 
     if (loadingProfile) {
-        return <div style={{ textAlign: 'center', padding: '60px' }}><Spin size="large" /></div>;
+        return (
+            <div style={{ textAlign: 'center', padding: '60px' }}>
+                <Spin size="large" />
+            </div>
+        );
     }
 
-    // --- Tab 1: Thông tin cá nhân ---
+    // ── Tab 1: Thông tin cá nhân ──
     const renderProfileTab = () => (
         <Form form={profileForm} layout="vertical" onFinish={onSaveProfile} size="large">
-            {/* Tên đăng nhập — chỉ đọc, không cho sửa */}
-            <Form.Item name="username" label={<Text strong>Tên đăng nhập</Text>}>
+
+            {/* Tên đăng nhập — chỉ đọc */}
+            <Form.Item
+                name="username"
+                label={<Text strong>Tên đăng nhập</Text>}
+            >
                 <Input prefix={<UserOutlined />} disabled />
             </Form.Item>
 
+            {/* Họ và tên */}
             <Form.Item
                 name="full_name"
                 label={<Text strong>Họ và tên</Text>}
@@ -142,28 +156,48 @@ const TenantProfile = () => {
                 <Input prefix={<UserOutlined />} placeholder="Nguyễn Văn A" />
             </Form.Item>
 
+            {/* Email — có thể chỉnh sửa, dùng để khôi phục mật khẩu */}
+            <Form.Item
+                name="email"
+                label={<Text strong>Email</Text>}
+                rules={[
+                    { type: 'email', message: 'Email không đúng định dạng!' },
+                ]}
+            >
+                <Input
+                    prefix={<MailOutlined />}
+                    placeholder="example@email.com (dùng để khôi phục mật khẩu)"
+                />
+            </Form.Item>
+
+            {/* Số điện thoại */}
             <Form.Item
                 name="phone"
                 label={<Text strong>Số điện thoại</Text>}
                 rules={[
                     { required: true, message: 'Vui lòng nhập số điện thoại!' },
-                    { pattern: /^[0-9]{9,11}$/, message: 'Số điện thoại không hợp lệ!' }
+                    { pattern: /^[0-9]{9,11}$/, message: 'Số điện thoại không hợp lệ!' },
                 ]}
             >
                 <Input prefix={<PhoneOutlined />} placeholder="090xxxxxxx" />
             </Form.Item>
 
+            {/* Số CCCD */}
             <Form.Item
                 name="cccd"
                 label={<Text strong>Số CCCD / CMND</Text>}
                 rules={[
-                    { pattern: /^[0-9]{9,12}$/, message: 'Số CCCD không hợp lệ (9–12 chữ số)!' }
+                    { pattern: /^[0-9]{9,12}$/, message: 'Số CCCD không hợp lệ (9–12 chữ số)!' },
                 ]}
             >
                 <Input prefix={<IdcardOutlined />} placeholder="001xxxxxxxxx" />
             </Form.Item>
 
-            <Form.Item name="hometown" label={<Text strong>Địa chỉ / Quê quán</Text>}>
+            {/* Địa chỉ / Quê quán */}
+            <Form.Item
+                name="hometown"
+                label={<Text strong>Địa chỉ / Quê quán</Text>}
+            >
                 <Input prefix={<HomeOutlined />} placeholder="Thành phố, Tỉnh" />
             </Form.Item>
 
@@ -181,7 +215,7 @@ const TenantProfile = () => {
         </Form>
     );
 
-    // --- Tab 2: Đổi mật khẩu ---
+    // ── Tab 2: Đổi mật khẩu ──
     const renderPasswordTab = () => {
         if (passwordSuccess) {
             return (
@@ -213,7 +247,7 @@ const TenantProfile = () => {
                     label={<Text strong>Mật khẩu mới</Text>}
                     rules={[
                         { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
-                        { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
+                        { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' },
                     ]}
                 >
                     <Input.Password prefix={<LockOutlined />} placeholder="Tối thiểu 6 ký tự" />
@@ -227,12 +261,11 @@ const TenantProfile = () => {
                         { required: true, message: 'Vui lòng xác nhận mật khẩu!' },
                         ({ getFieldValue }) => ({
                             validator(_, value) {
-                                if (!value || getFieldValue('new_password') === value) {
+                                if (!value || getFieldValue('new_password') === value)
                                     return Promise.resolve();
-                                }
                                 return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
-                            }
-                        })
+                            },
+                        }),
                     ]}
                 >
                     <Input.Password prefix={<LockOutlined />} placeholder="Nhập lại mật khẩu mới" />
@@ -257,9 +290,9 @@ const TenantProfile = () => {
         <div style={{ maxWidth: 520, margin: '20px auto' }}>
             <Card
                 bordered={false}
-                style={{ borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
+                style={{ borderRadius: 12, boxShadow: '0 2px 12px rgba(108,99,255,0.08)' }}
             >
-                {/* Avatar + tên hiển thị — bấm vào avatar để đổi ảnh */}
+                {/* Avatar — bấm vào để đổi ảnh */}
                 <div style={{ textAlign: 'center', marginBottom: 24 }}>
                     <Upload
                         showUploadList={false}
@@ -268,26 +301,44 @@ const TenantProfile = () => {
                         onChange={handleAvatarChange}
                         disabled={avatarUploading}
                     >
-                        <div style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}>
+                        <div style={{
+                            position: 'relative',
+                            display: 'inline-block',
+                            cursor: 'pointer',
+                        }}>
                             <Avatar
                                 size={72}
                                 src={avatarUrl ? `http://localhost:5000${avatarUrl}` : undefined}
                                 icon={!avatarUrl && <UserOutlined />}
-                                style={{ backgroundColor: '#1890ff', marginBottom: 12 }}
+                                style={{
+                                    background: 'linear-gradient(135deg, #6C63FF, #06B6D4)',
+                                    marginBottom: 12,
+                                }}
                             />
+                            {/* Nút edit nhỏ góc dưới phải avatar */}
                             <div style={{
-                                position: 'absolute', bottom: 8, right: -4, background: '#1890ff',
-                                borderRadius: '50%', width: 24, height: 24, display: 'flex',
-                                alignItems: 'center', justifyContent: 'center', border: '2px solid #fff'
+                                position: 'absolute', bottom: 8, right: -4,
+                                background: '#6C63FF',
+                                borderRadius: '50%',
+                                width: 24, height: 24,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                border: '2px solid #fff',
+                                boxShadow: '0 2px 6px rgba(108,99,255,0.4)',
                             }}>
                                 <EditOutlined style={{ color: '#fff', fontSize: 12 }} />
                             </div>
                         </div>
                     </Upload>
+
                     {avatarUploading && (
-                        <div><Text type="secondary" style={{ fontSize: 13 }}>Đang tải ảnh lên...</Text></div>
+                        <div style={{ marginTop: 4 }}>
+                            <Text type="secondary" style={{ fontSize: 13 }}>Đang tải ảnh lên...</Text>
+                        </div>
                     )}
-                    <Title level={4} style={{ margin: '8px 0 0' }}>{user.full_name}</Title>
+
+                    <Title level={4} style={{ margin: '8px 0 0', color: '#1E1B4B' }}>
+                        {user.full_name}
+                    </Title>
                     <Text type="secondary">@{user.username}</Text>
                 </div>
 
@@ -301,13 +352,13 @@ const TenantProfile = () => {
                         {
                             key: 'info',
                             label: <span><UserOutlined /> Thông tin cá nhân</span>,
-                            children: renderProfileTab()
+                            children: renderProfileTab(),
                         },
                         {
                             key: 'password',
                             label: <span><LockOutlined /> Đổi mật khẩu</span>,
-                            children: renderPasswordTab()
-                        }
+                            children: renderPasswordTab(),
+                        },
                     ]}
                 />
             </Card>

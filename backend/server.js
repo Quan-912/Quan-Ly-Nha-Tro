@@ -327,7 +327,7 @@ app.post('/api/rooms/:id/image', uploadRoomImage.single('image'), (req, res) => 
 app.get('/api/tenant/available-rooms', (req, res) => {
     const { room_number, min_price, max_price, room_type } = req.query;
 
-    let sql = "SELECT room_id, room_number, room_type, base_price, area, floor, description, status FROM Rooms WHERE (status = 'AVAILABLE' OR status = 'CÒN TRỐNG')";
+    let sql = "SELECT room_id, room_number, room_type, base_price, area, floor, description, status, image_path FROM Rooms WHERE (status = 'AVAILABLE' OR status = 'CÒN TRỐNG')";
     const params = [];
 
     if (room_number && room_number.trim() !== '') {
@@ -779,13 +779,13 @@ app.get('/api/last-index/:roomId', (req, res) => {
 app.get('/api/tenant/room-info/:userId', (req, res) => {
     const userId = req.params.userId;
     const sql = `
-        SELECT r.room_id, r.room_number, r.room_type, r.base_price, r.area, r.floor, r.description, c.start_date, c.deposit_amount, c.status as contract_status
-        FROM Users u 
-        JOIN Tenants t ON u.user_id = t.user_id
-        JOIN Contracts c ON t.tenant_id = c.tenant_id
-        JOIN Rooms r ON c.room_id = r.room_id
+        SELECT r.room_id, r.room_number, r.room_type, r.base_price, r.area, r.floor, r.description, r.image_path, c.start_date, c.deposit_amount, c.status as contract_status
+        FROM Users u
+                 JOIN Tenants t ON u.user_id = t.user_id
+                 JOIN Contracts c ON t.tenant_id = c.tenant_id
+                 JOIN Rooms r ON c.room_id = r.room_id
         WHERE u.user_id = ? AND c.status = 'ACTIVE'
-        LIMIT 1
+            LIMIT 1
     `;
 
     db.query(sql, [userId], (err, result) => {

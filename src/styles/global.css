@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ═══════════════════════════════════════
+   BASE
+═══════════════════════════════════════ */
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    background: #F4F3FF;
+}
+
+/* ═══════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(108, 99, 255, 0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(108, 99, 255, 0.55); }
+
+/* ═══════════════════════════════════════
+   ADMIN HEADER — gradient accent line
+═══════════════════════════════════════ */
+.admin-header {
+    position: relative !important;
+}
+.admin-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #6C63FF 0%, #06B6D4 100%);
+    pointer-events: none;
+}
+
+/* ═══════════════════════════════════════
+   ADMIN SIDEBAR MENU
+═══════════════════════════════════════ */
+.admin-sider .ant-menu.ant-menu-dark {
+    background: transparent !important;
+    border-inline-end: none !important;
+}
+.admin-sider .ant-menu-item {
+    margin: 2px 8px !important;
+    width: calc(100% - 16px) !important;
+    border-radius: 8px !important;
+    height: 42px !important;
+    line-height: 42px !important;
+    transition: all 0.18s ease !important;
+}
+.admin-sider .ant-menu-item-selected {
+    background: rgba(108, 99, 255, 0.22) !important;
+    border-left: 3px solid #6C63FF !important;
+}
+.admin-sider .ant-menu-item:hover:not(.ant-menu-item-selected) {
+    background: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* ═══════════════════════════════════════
+   TENANT HEADER MENU
+═══════════════════════════════════════ */
+.tenant-header .ant-menu-horizontal {
+    background: transparent !important;
+    border-bottom: none !important;
+    line-height: 62px;
+}
+.tenant-header .ant-menu-item a,
+.tenant-header .ant-menu-item span {
+    color: rgba(255, 255, 255, 0.80) !important;
+    font-weight: 500;
+}
+.tenant-header .ant-menu-item-selected a,
+.tenant-header .ant-menu-item-selected span {
+    color: #ffffff !important;
+    font-weight: 700;
+}
+.tenant-header .ant-menu-item-selected::after,
+.tenant-header .ant-menu-item:hover::after {
+    border-bottom-color: rgba(255, 255, 255, 0.8) !important;
+}
+.tenant-header .ant-menu-item:hover {
+    background: rgba(255, 255, 255, 0.10) !important;
+    border-radius: 8px;
+}
+.tenant-header .ant-menu-item-selected {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px;
+}
+.tenant-header .ant-menu-overflow-item .ant-menu-title-content {
+    color: rgba(255, 255, 255, 0.80) !important;
+}
+
+/* ═══════════════════════════════════════
+   ANTD TABLE
+═══════════════════════════════════════ */
+.ant-table-thead > tr > th {
+    background: #F5F3FF !important;
+    color: #4F46E5 !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    letter-spacing: 0.02em !important;
+    border-bottom: 2px solid #EDE9FE !important;
+}
+.ant-table-row:hover > td {
+    background: #FAFAFF !important;
+}
+
+/* ═══════════════════════════════════════
+   HOVER CARD
+═══════════════════════════════════════ */
+.hover-card {
+    transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+.hover-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 32px rgba(108, 99, 255, 0.14) !important;
+}
+
+/* ═══════════════════════════════════════
+   STAT CARD TOP ACCENT BORDERS
+═══════════════════════════════════════ */
+.stat-violet { border-top: 3px solid #6C63FF !important; }
+.stat-green  { border-top: 3px solid #10B981 !important; }
+.stat-purple { border-top: 3px solid #8B5CF6 !important; }
+.stat-amber  { border-top: 3px solid #F59E0B !important; }
+.stat-red    { border-top: 3px solid #EF4444 !important; }
+.stat-cyan   { border-top: 3px solid #06B6D4 !important; }
+
+/* ═══════════════════════════════════════
+   GRADIENT TEXT UTILITY
+═══════════════════════════════════════ */
+.gradient-text {
+    background: linear-gradient(135deg, #6C63FF, #06B6D4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ═══════════════════════════════════════
+   ANTD LAYOUT
+═══════════════════════════════════════ */
+.ant-layout { background: #F4F3FF !important; }
+.ant-layout-content { background: transparent !important; }
+
+/* ═══════════════════════════════════════
+   LOGIN RESPONSIVE
+═══════════════════════════════════════ */
+@media (max-width: 768px) {
+    .login-left-panel { display: none !important; }
+}

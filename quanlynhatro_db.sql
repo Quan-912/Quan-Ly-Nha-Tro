@@ -11,7 +11,7 @@
  Target Server Version : 100432 (10.4.32-MariaDB)
  File Encoding         : 65001
 
- Date: 25/06/2026 10:55:16
+ Date: 25/06/2026 19:15:34
 */
 
 SET NAMES utf8mb4;
@@ -36,7 +36,7 @@ CREATE TABLE `bookings`  (
                              INDEX `room_id`(`room_id` ASC) USING BTREE,
                              CONSTRAINT `bookings_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`tenant_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
                              CONSTRAINT `bookings_ibfk_2` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`room_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of bookings
@@ -47,6 +47,8 @@ INSERT INTO `bookings` VALUES (3, 5, 1, '2026-06-20', 1, '', 'APPROVED', NULL, '
 INSERT INTO `bookings` VALUES (4, 10, 14, '2026-06-30', 2, 'abc', 'APPROVED', NULL, '2026-06-09 19:11:11');
 INSERT INTO `bookings` VALUES (5, 12, 1, '2026-06-18', 1, '', 'APPROVED', NULL, '2026-06-17 19:53:31');
 INSERT INTO `bookings` VALUES (6, 7, 13, '2026-06-18', 1, '', 'APPROVED', NULL, '2026-06-17 20:05:48');
+INSERT INTO `bookings` VALUES (7, 14, 3, '2026-06-30', 1, '', 'APPROVED', NULL, '2026-06-25 11:07:23');
+INSERT INTO `bookings` VALUES (8, 14, 18, '2026-06-26', 1, '', 'APPROVED', NULL, '2026-06-25 11:09:36');
 
 -- ----------------------------
 -- Table structure for contracts
@@ -60,23 +62,26 @@ CREATE TABLE `contracts`  (
                               `end_date` date NULL DEFAULT NULL,
                               `deposit_amount` decimal(10, 2) NULL DEFAULT NULL,
                               `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'ACTIVE',
+                              `refunded_amount` decimal(12, 2) NULL DEFAULT NULL,
                               PRIMARY KEY (`contract_id`) USING BTREE,
                               INDEX `room_id`(`room_id` ASC) USING BTREE,
                               INDEX `tenant_id`(`tenant_id` ASC) USING BTREE,
                               CONSTRAINT `contracts_ibfk_1` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`room_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
                               CONSTRAINT `contracts_ibfk_2` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`tenant_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 16 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of contracts
 -- ----------------------------
-INSERT INTO `contracts` VALUES (1, 7, 2, '2026-01-20', '2026-05-20', 3000000.00, 'ACTIVE');
-INSERT INTO `contracts` VALUES (4, 4, 3, '2026-05-26', '2026-05-27', 3000000.00, 'ACTIVE');
-INSERT INTO `contracts` VALUES (8, 3, 8, '2026-06-06', '2026-06-17', 0.00, 'EXPIRED');
-INSERT INTO `contracts` VALUES (9, 17, 9, '2026-06-08', '2026-06-17', 0.00, 'EXPIRED');
-INSERT INTO `contracts` VALUES (10, 1, 5, '2026-06-08', '2026-06-16', 1000000.00, 'EXPIRED');
-INSERT INTO `contracts` VALUES (12, 1, 12, '2026-06-17', NULL, 1000000.00, 'ACTIVE');
-INSERT INTO `contracts` VALUES (13, 13, 7, '2026-06-17', NULL, 1000000.00, 'ACTIVE');
+INSERT INTO `contracts` VALUES (1, 7, 2, '2026-01-20', '2026-05-20', 3000000.00, 'ACTIVE', NULL);
+INSERT INTO `contracts` VALUES (4, 4, 3, '2026-05-26', '2026-05-27', 3000000.00, 'ACTIVE', NULL);
+INSERT INTO `contracts` VALUES (8, 3, 8, '2026-06-06', '2026-06-17', 0.00, 'EXPIRED', NULL);
+INSERT INTO `contracts` VALUES (9, 17, 9, '2026-06-08', '2026-06-17', 0.00, 'EXPIRED', NULL);
+INSERT INTO `contracts` VALUES (10, 1, 5, '2026-06-08', '2026-06-16', 1000000.00, 'EXPIRED', NULL);
+INSERT INTO `contracts` VALUES (12, 1, 12, '2026-06-17', NULL, 1000000.00, 'ACTIVE', NULL);
+INSERT INTO `contracts` VALUES (13, 13, 7, '2026-06-17', NULL, 1000000.00, 'ACTIVE', NULL);
+INSERT INTO `contracts` VALUES (14, 3, 14, '2026-06-25', '2026-06-25', 1500000.00, 'EXPIRED', NULL);
+INSERT INTO `contracts` VALUES (15, 18, 14, '2026-06-25', NULL, 1000000.00, 'ACTIVE', NULL);
 
 -- ----------------------------
 -- Table structure for invoice_details
@@ -126,6 +131,7 @@ CREATE TABLE `invoices`  (
                              `total_amount` decimal(12, 2) NULL DEFAULT 0.00,
                              `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'UNPAID',
                              `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                             `room_rent` decimal(12, 2) NULL DEFAULT 0.00,
                              PRIMARY KEY (`invoice_id`) USING BTREE,
                              INDEX `room_id`(`room_id` ASC) USING BTREE,
                              CONSTRAINT `invoices_ibfk_1` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`room_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
@@ -134,13 +140,13 @@ CREATE TABLE `invoices`  (
 -- ----------------------------
 -- Records of invoices
 -- ----------------------------
-INSERT INTO `invoices` VALUES (1, 1, '05/2026', 18500.00, 'PAID', '2026-05-18 08:17:04');
-INSERT INTO `invoices` VALUES (2, 1, '05/2026', -3500.00, 'PAID', '2026-05-19 09:24:09');
-INSERT INTO `invoices` VALUES (3, 7, '05/2026', 37000.00, 'PAID', '2026-05-19 09:30:56');
-INSERT INTO `invoices` VALUES (4, 13, '06/2026', 67500.00, 'PAID', '2026-06-05 08:38:38');
-INSERT INTO `invoices` VALUES (5, 6, '06/2026', 22000.00, 'PAID', '2026-06-05 08:39:01');
-INSERT INTO `invoices` VALUES (6, 1, '07/2026', 19000.00, 'PAID', '2026-06-08 19:12:48');
-INSERT INTO `invoices` VALUES (7, 14, '07/2026', 42000.00, 'PAID', '2026-06-17 19:41:56');
+INSERT INTO `invoices` VALUES (1, 1, '05/2026', 18500.00, 'PAID', '2026-05-18 08:17:04', 0.00);
+INSERT INTO `invoices` VALUES (2, 1, '05/2026', -3500.00, 'PAID', '2026-05-19 09:24:09', 0.00);
+INSERT INTO `invoices` VALUES (3, 7, '05/2026', 37000.00, 'PAID', '2026-05-19 09:30:56', 0.00);
+INSERT INTO `invoices` VALUES (4, 13, '06/2026', 67500.00, 'PAID', '2026-06-05 08:38:38', 0.00);
+INSERT INTO `invoices` VALUES (5, 6, '06/2026', 22000.00, 'PAID', '2026-06-05 08:39:01', 0.00);
+INSERT INTO `invoices` VALUES (6, 1, '07/2026', 19000.00, 'PAID', '2026-06-08 19:12:48', 0.00);
+INSERT INTO `invoices` VALUES (7, 14, '07/2026', 42000.00, 'PAID', '2026-06-17 19:41:56', 0.00);
 
 -- ----------------------------
 -- Table structure for issues
@@ -159,13 +165,15 @@ CREATE TABLE `issues`  (
                            INDEX `room_id`(`room_id` ASC) USING BTREE,
                            CONSTRAINT `issues_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`tenant_id`) ON DELETE CASCADE ON UPDATE RESTRICT,
                            CONSTRAINT `issues_ibfk_2` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`room_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of issues
 -- ----------------------------
 INSERT INTO `issues` VALUES (1, 5, 1, 'cháy bóng đèn', 'bóng đèn ngoài sân đã bị cháy', 'RESOLVED', '2026-06-04 10:04:12');
 INSERT INTO `issues` VALUES (2, 9, 17, 'nghẽn đường dẫn nước', 'ống vòi sen bị tắt, nước yếu', 'PENDING', '2026-06-08 19:09:43');
+INSERT INTO `issues` VALUES (3, 14, 18, 'cháy bóng đèn', 'đèn nhà vệ sinh bị cháy', 'PENDING', '2026-06-25 11:21:31');
+INSERT INTO `issues` VALUES (4, 14, 18, 'gãy ống nước', 'Ống dẫn nước bị bể', 'PENDING', '2026-06-25 11:22:50');
 
 -- ----------------------------
 -- Table structure for rooms
@@ -187,18 +195,18 @@ CREATE TABLE `rooms`  (
 -- ----------------------------
 -- Records of rooms
 -- ----------------------------
-INSERT INTO `rooms` VALUES (1, '101', 'Phòng đơn', 3500000.00, 25, 1, NULL, 'OCCUPIED', NULL);
-INSERT INTO `rooms` VALUES (2, '102', 'Phòng đơn', 3000000.00, 20, 1, NULL, 'OCCUPIED', NULL);
-INSERT INTO `rooms` VALUES (3, '103', 'Phòng đôi', 5000000.00, 25, 2, NULL, 'AVAILABLE', NULL);
+INSERT INTO `rooms` VALUES (1, '101', 'Phòng đơn', 3500000.00, 25, 1, NULL, 'OCCUPIED', '/uploads/rooms/room_1_1782360105607.png');
+INSERT INTO `rooms` VALUES (2, '102', 'Phòng đơn', 3000000.00, 20, 1, NULL, 'OCCUPIED', '/uploads/rooms/room_2_1782360323468.jpg');
+INSERT INTO `rooms` VALUES (3, '103', 'Phòng đôi', 5000000.00, 25, 2, NULL, 'AVAILABLE', '/uploads/rooms/room_3_1782360327305.jpg');
 INSERT INTO `rooms` VALUES (4, '104', 'Chung cư mini', 6000000.00, NULL, 1, NULL, 'OCCUPIED', NULL);
 INSERT INTO `rooms` VALUES (6, '106', 'Chung cư mini', 6000000.00, NULL, 1, NULL, 'AVAILABLE', NULL);
 INSERT INTO `rooms` VALUES (7, '107', 'Phòng đôi', 5000000.00, NULL, 1, NULL, 'OCCUPIED', NULL);
 INSERT INTO `rooms` VALUES (8, '108', 'Phòng đơn', 3500000.00, NULL, 1, NULL, 'OCCUPIED', NULL);
 INSERT INTO `rooms` VALUES (11, '109', 'Phòng đôi', 5000000.00, 30, 2, NULL, 'AVAILABLE', NULL);
-INSERT INTO `rooms` VALUES (13, '110', 'Phòng đơn', 3000000.00, NULL, 1, NULL, 'OCCUPIED', NULL);
-INSERT INTO `rooms` VALUES (14, '111', 'Phòng đôi', 5000000.00, NULL, 1, NULL, 'AVAILABLE', NULL);
-INSERT INTO `rooms` VALUES (17, '112', 'Phòng đơn', 3500000.00, NULL, 1, NULL, 'AVAILABLE', NULL);
-INSERT INTO `rooms` VALUES (18, '105', 'Phòng đơn', 3000000.00, 20, 1, NULL, 'AVAILABLE', NULL);
+INSERT INTO `rooms` VALUES (13, '110', 'Phòng đơn', 3000000.00, 20, 1, NULL, 'OCCUPIED', NULL);
+INSERT INTO `rooms` VALUES (14, '111', 'Phòng đôi', 4000000.00, 25, 1, NULL, 'AVAILABLE', NULL);
+INSERT INTO `rooms` VALUES (17, '112', 'Phòng đơn', 3000000.00, 20, 1, NULL, 'AVAILABLE', NULL);
+INSERT INTO `rooms` VALUES (18, '105', 'Phòng đơn', 3000000.00, 20, 1, NULL, 'OCCUPIED', '/uploads/rooms/room_18_1782360403035.png');
 
 -- ----------------------------
 -- Table structure for services
@@ -232,7 +240,7 @@ CREATE TABLE `tenants`  (
                             PRIMARY KEY (`tenant_id`) USING BTREE,
                             UNIQUE INDEX `user_id`(`user_id` ASC) USING BTREE,
                             CONSTRAINT `tenants_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of tenants
@@ -250,6 +258,7 @@ INSERT INTO `tenants` VALUES (10, 11, '058204001125', '0898744912', NULL, 'Đài
 INSERT INTO `tenants` VALUES (11, 12, '058204001987', '0383210319', NULL, 'Phan Rang');
 INSERT INTO `tenants` VALUES (12, 13, '058204001987', '0234782937', NULL, 'Phan Rang Thap Cham');
 INSERT INTO `tenants` VALUES (13, 14, '058204001933', '0328782944', NULL, 'Phan Rang');
+INSERT INTO `tenants` VALUES (14, 15, '058204001987', '0359994254', NULL, 'Thuận Bắc');
 
 -- ----------------------------
 -- Table structure for users
@@ -267,7 +276,7 @@ CREATE TABLE `users`  (
                           `avatar_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
                           PRIMARY KEY (`user_id`) USING BTREE,
                           UNIQUE INDEX `email`(`email` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 16 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of users
@@ -281,5 +290,6 @@ INSERT INTO `users` VALUES (11, 'Trà', '$2b$10$.oLizY0tC/duNNWB4vbR5./s72b5heZA
 INSERT INTO `users` VALUES (12, 'phu', '$2b$10$/vl.8r1mBxGrdULgzfYTj.6ys0M93fjy9L2En5lLi7ESNBs0bNVCK', 'TENANT', 'nguyen van b', 'ACTIVE', '2026-06-16 14:49:43', NULL, NULL);
 INSERT INTO `users` VALUES (13, 'Nga', '$2b$10$auV.sBzR/QJZieGoBIR61.0Ce7qXu6O7B21i8GKRh2X85XnLBA0XW', 'TENANT', 'Quân Thế', 'ACTIVE', '2026-06-17 19:52:12', NULL, NULL);
 INSERT INTO `users` VALUES (14, 'Quoc', '$2b$10$LHmzuHICgCLVeUvDtexQruOMo1Ql5YhdPrLK8P5byBJmmbffem.wq', 'TENANT', 'Pham Minh Quoc', 'ACTIVE', '2026-06-20 19:13:24', 'minhquoc123@gmail.com', NULL);
+INSERT INTO `users` VALUES (15, 'Hiếu', '$2b$10$SJL/qFAbJmqFe.fTmq2mFukWTAm9R2gvtTQwBuXeorZmSOhhQ6Rmq', 'TENANT', 'Trần Nam Hiếu', 'ACTIVE', '2026-06-25 11:01:05', 'namhieu123@gmail.com', NULL);
 
 SET FOREIGN_KEY_CHECKS = 1;

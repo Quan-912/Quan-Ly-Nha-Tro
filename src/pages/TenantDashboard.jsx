@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
     Card, Descriptions, Spin, Typography, Tag, Badge,
     Form, Input, Button, Table, message, Tabs, Modal,
-    Divider, Alert, Result
+    Divider, Alert, Result, Image, Row, Col
 } from 'antd';
 import {
     HomeOutlined, CalendarOutlined, SendOutlined, DollarOutlined, ToolOutlined,
-    HistoryOutlined, EyeOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined
+    HistoryOutlined, EyeOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined,
+    PictureOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -171,31 +172,53 @@ const TenantDashboard = () => {
                 title={<span style={{ fontSize: '16px' }}><HomeOutlined /> THÔNG TIN PHÒNG Ở</span>}
                 bordered={false} style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24 }}
             >
-                <Descriptions bordered column={2} size="middle">
-                    <Descriptions.Item label="Số phòng">
-                        <b style={{ fontSize: '16px', color: '#1890ff' }}>Phòng {roomData.room_number}</b>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Loại phòng">{roomData.room_type}</Descriptions.Item>
-                    <Descriptions.Item label="Giá thuê / tháng">
-                        <Text type="danger" strong>{roomData.base_price ? parseInt(roomData.base_price).toLocaleString() : 0} đ</Text>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Tiền cọc">
-                        {roomData.deposit_amount ? parseInt(roomData.deposit_amount).toLocaleString() : 0} đ
-                    </Descriptions.Item>
-                    {roomData.area && (
-                        <Descriptions.Item label="Diện tích">{roomData.area} m²</Descriptions.Item>
-                    )}
-                    {roomData.floor && (
-                        <Descriptions.Item label="Tầng">Tầng {roomData.floor}</Descriptions.Item>
-                    )}
-                    <Descriptions.Item label="Ngày bắt đầu thuê">
-                        <CalendarOutlined /> {roomData.start_date ? new Date(roomData.start_date).toLocaleDateString('vi-VN') : ''}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Hợp đồng"><Badge status="success" text="Đang hiệu lực" /></Descriptions.Item>
-                    {roomData.description && (
-                        <Descriptions.Item label="Tiện nghi" span={2}>{roomData.description}</Descriptions.Item>
-                    )}
-                </Descriptions>
+                <Row gutter={20}>
+                    {/* Cột ảnh phòng — lấy từ image_path do Admin upload */}
+                    <Col xs={24} sm={8}>
+                        {roomData.image_path ? (
+                            <Image
+                                src={`http://localhost:5000${roomData.image_path}`}
+                                style={{ width: '100%', borderRadius: 8, objectFit: 'cover', maxHeight: 220 }}
+                                preview={{ mask: 'Xem ảnh phòng' }}
+                            />
+                        ) : (
+                            <div style={{
+                                width: '100%', height: 180, background: '#f0f0f0', borderRadius: 8,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <PictureOutlined style={{ fontSize: 36, color: '#bfbfbf' }} />
+                            </div>
+                        )}
+                    </Col>
+
+                    <Col xs={24} sm={16}>
+                        <Descriptions bordered column={2} size="middle">
+                            <Descriptions.Item label="Số phòng">
+                                <b style={{ fontSize: '16px', color: '#1890ff' }}>Phòng {roomData.room_number}</b>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Loại phòng">{roomData.room_type}</Descriptions.Item>
+                            <Descriptions.Item label="Giá thuê / tháng">
+                                <Text type="danger" strong>{roomData.base_price ? parseInt(roomData.base_price).toLocaleString() : 0} đ</Text>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Tiền cọc">
+                                {roomData.deposit_amount ? parseInt(roomData.deposit_amount).toLocaleString() : 0} đ
+                            </Descriptions.Item>
+                            {roomData.area && (
+                                <Descriptions.Item label="Diện tích">{roomData.area} m²</Descriptions.Item>
+                            )}
+                            {roomData.floor && (
+                                <Descriptions.Item label="Tầng">Tầng {roomData.floor}</Descriptions.Item>
+                            )}
+                            <Descriptions.Item label="Ngày bắt đầu thuê">
+                                <CalendarOutlined /> {roomData.start_date ? new Date(roomData.start_date).toLocaleDateString('vi-VN') : ''}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Hợp đồng"><Badge status="success" text="Đang hiệu lực" /></Descriptions.Item>
+                            {roomData.description && (
+                                <Descriptions.Item label="Tiện nghi" span={2}>{roomData.description}</Descriptions.Item>
+                            )}
+                        </Descriptions>
+                    </Col>
+                </Row>
             </Card>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>

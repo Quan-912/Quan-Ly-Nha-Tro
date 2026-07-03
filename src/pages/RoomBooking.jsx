@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
     Card, Row, Col, Tag, Button, Modal, Form, DatePicker,
     InputNumber, Input, Typography, Spin, Empty, message,
-    Badge, Descriptions, Result, Alert, Select, Space
+    Badge, Descriptions, Result, Alert, Select, Space, Image
 } from 'antd';
 import {
     HomeOutlined, CalendarOutlined, AppstoreOutlined,
     TeamOutlined, FileTextOutlined, ClockCircleOutlined,
-    ExpandOutlined, ApartmentOutlined, SearchOutlined, FilterOutlined
+    ExpandOutlined, ApartmentOutlined, SearchOutlined, FilterOutlined,
+    PictureOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -239,6 +240,24 @@ const RoomBooking = () => {
                                 <Card
                                     hoverable
                                     style={{ borderRadius: 12, border: '1px solid #e8f4ff', boxShadow: '0 2px 12px rgba(24,144,255,0.08)' }}
+                                    cover={
+                                        room.image_path ? (
+                                            <Image
+                                                src={`http://localhost:5000${room.image_path}`}
+                                                height={160}
+                                                style={{ objectFit: 'cover', borderRadius: '12px 12px 0 0' }}
+                                                preview={{ mask: 'Xem ảnh phòng' }}
+                                            />
+                                        ) : (
+                                            <div style={{
+                                                height: 160, background: '#f0f0f0',
+                                                borderRadius: '12px 12px 0 0',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                <PictureOutlined style={{ fontSize: 36, color: '#bfbfbf' }} />
+                                            </div>
+                                        )
+                                    }
                                     actions={[
                                         <Button
                                             type="primary"
@@ -254,13 +273,6 @@ const RoomBooking = () => {
                                         <Badge status="success" text={<Text style={{ color: '#52c41a', fontWeight: 600 }}>Còn trống</Text>} />
                                     </div>
                                     <div style={{ textAlign: 'center', marginBottom: 14 }}>
-                                        <div style={{
-                                            width: 56, height: 56, borderRadius: '50%',
-                                            background: 'linear-gradient(135deg, #1890ff, #096dd9)',
-                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8
-                                        }}>
-                                            <HomeOutlined style={{ fontSize: 24, color: '#fff' }} />
-                                        </div>
                                         <Title level={3} style={{ margin: 0, color: '#1890ff' }}>Phòng {room.room_number}</Title>
                                     </div>
 
